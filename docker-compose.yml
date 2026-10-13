@@ -1,0 +1,60 @@
+# Local development stack. Works from a fresh clone without a .env file;
+# copy .env.example to .env to override any value.
+name: injection-lab
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-injection_lab}
+      POSTGRES_USER: ${POSTGRES_USER:-lab_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lab_owner_local}
+      APP_DB_USER: ${APP_DB_USER:-lab_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-lab_app_local}
+    volumes:
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ./apps/api
+    environment:
+      DATABASE_URL: postgresql://${APP_DB_USER:-lab_app}:${APP_DB_PASSWORD:-lab_app_local}@postgres:5432/${POSTGRES_DB:-injection_lab}
+      TEST_DATABASE_URL: postgresql://${APP_DB_USER:-lab_app}:${APP_DB_PASSWORD:-lab_app_local}@postgres:5432/${POSTGRES_DB:-injection_lab}_test
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      BQ_DATASET: ${BQ_DATASET:-injection_lab}
+      BQ_LOCATION: ${BQ_LOCATION:-US}
+    volumes:
+      - ./apps/api:/app
+      - /app/.venv
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  web:
+    build: ./apps/web
+    environment:
+      API_URL: http://api:8000
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

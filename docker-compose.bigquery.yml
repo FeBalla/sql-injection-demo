@@ -1,0 +1,11 @@
+# Enables the BigQuery backend. Mounts Application Default Credentials that
+# impersonate the least-privilege service account created by infra/gcp/setup.sh.
+# The file never enters the image or the repo; it is mounted read-only.
+#
+# Enable with COMPOSE_FILE=docker-compose.yml:docker-compose.bigquery.yml in .env.
+services:
+  api:
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-adc.json
+    volumes:
+      - ${GCP_ADC_FILE:?Set GCP_ADC_FILE to your ADC file path}:/run/secrets/gcp-adc.json:ro
