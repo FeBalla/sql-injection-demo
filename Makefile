@@ -2,7 +2,7 @@
 .PHONY: up down logs check lint-api test-api test-api-bigquery lint-web typecheck-web build-web format gitleaks
 
 up:
-	docker compose up --build
+	docker compose up --build --renew-anon-volumes
 
 down:
 	docker compose down
