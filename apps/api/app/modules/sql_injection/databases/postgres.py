@@ -1,4 +1,4 @@
-"""Postgres backend (psycopg 3), connected as the least-privilege ``lab_app`` role."""
+"""Postgres (psycopg 3), connected as the least-privilege ``lab_app`` role."""
 
 import threading
 from collections.abc import Iterator
@@ -10,13 +10,13 @@ from psycopg.rows import dict_row
 from app.config import Settings
 
 from ..schemas import COLUMNS, Customer, Db, StatementPreview
-from ..seed import SEED_ROWS
-from .base import DatabaseUnavailableError, Execution
+from ..seed_data import SEED_ROWS
+from .protocol import DatabaseUnavailableError, Execution
 
 _TABLE = "public.customers"
 
 
-class PostgresBackend:
+class PostgresDatabase:
     id: Db = "postgres"
     label = "Postgres"
     table = _TABLE
@@ -66,29 +66,15 @@ class PostgresBackend:
         # needs). Autocommit makes each request its own transaction.
         params = [param.value for param in statement.params] if statement.parameterized else None
         with self._connect() as conn:
-            # statement_timeout is only a session default: the executed SQL can raise or disable
-            # it (`SET statement_timeout = 0; ...`). This client-side watchdog cancels the run
-            # after the same time limit regardless of what the SQL did to its session.
-            timed_out = threading.Event()
-
-            def cancel() -> None:
-                timed_out.set()
-                with suppress(psycopg.Error):
-                    conn.cancel_safe()
-
-            watchdog = threading.Timer(self._statement_timeout_ms / 1000, cancel)
-            watchdog.start()
             try:
-                with conn.cursor() as cur:
+                with (
+                    _cancel_after(self._statement_timeout_ms, conn) as timed_out,
+                    conn.cursor() as cur,
+                ):
                     cur.execute(statement.sql, params)
                     rows_affected = _rows_affected(cur)
             except psycopg.Error as exc:
                 error = self._timeout_error() if timed_out.is_set() else _error_message(exc)
-            else:
-                error = None
-            finally:
-                watchdog.cancel()
-            if error is not None:
                 return Execution(False, None, _count_or_none(conn), error)
             return Execution(True, rows_affected, _count_or_none(conn))
 
@@ -109,6 +95,29 @@ class PostgresBackend:
             raise DatabaseUnavailableError("Postgres is unreachable.") from exc
         with conn:
             yield conn
+
+
+@contextmanager
+def _cancel_after(timeout_ms: int, conn: psycopg.Connection) -> Iterator[threading.Event]:
+    """Cancel whatever ``conn`` is running once ``timeout_ms`` pass; the event tells if it did.
+
+    statement_timeout is only a session default: the executed SQL can raise or disable it
+    (`SET statement_timeout = 0; ...`). This client-side watchdog cancels the run after the same
+    time limit regardless of what the SQL did to its session.
+    """
+    timed_out = threading.Event()
+
+    def cancel() -> None:
+        timed_out.set()
+        with suppress(psycopg.Error):
+            conn.cancel_safe()
+
+    watchdog = threading.Timer(timeout_ms / 1000, cancel)
+    watchdog.start()
+    try:
+        yield timed_out
+    finally:
+        watchdog.cancel()
 
 
 def _count(conn: psycopg.Connection) -> int:

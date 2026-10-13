@@ -1,19 +1,19 @@
 """Builds the INSERT statement shown in the preview and executed by /insert.
 
-Both endpoints call :func:`build_statement`, and the backends execute exactly
+Both endpoints call :func:`build_statement`, and the databases execute exactly
 ``statement.sql`` with ``statement.params``, so the preview can never drift from what runs.
 """
 
-from .highlight import Piece, analyze
-from .schemas import COLUMNS, BoundParam, CustomerIn, Db, StatementPreview
-from .unsafe import concatenated_values
+from ..schemas import COLUMNS, BoundParam, CustomerIn, Db, StatementPreview
+from ..sql_analysis.analysis import Piece, analyze
+from .unsafe_concatenation import concatenated_values
 
 _COLUMN_LIST = ", ".join(COLUMNS)
 
 
 def build_statement(db: Db, row: CustomerIn, parameterized: bool, table: str) -> StatementPreview:
     """Build the INSERT for ``row`` into ``table`` (as written in SQL, without quoting)."""
-    pieces = _pieces(db, row, parameterized, table)
+    pieces = _sql_pieces(db, row, parameterized, table)
     analysis = analyze(pieces, db)
     return StatementPreview(
         database=db,
@@ -26,13 +26,20 @@ def build_statement(db: Db, row: CustomerIn, parameterized: bool, table: str) ->
     )
 
 
-def _pieces(db: Db, row: CustomerIn, parameterized: bool, table: str) -> list[Piece]:
+def _sql_pieces(db: Db, row: CustomerIn, parameterized: bool, table: str) -> list[Piece]:
     if db == "postgres":
-        head = f"INSERT INTO {table} ({_COLUMN_LIST})\n"
-        if parameterized:
-            return [(head + "VALUES ($1, $2, $3, $4);", None)]
-        return [(head + "VALUES (\n", None), *concatenated_values(row), (");", None)]
+        return _postgres_insert(row, parameterized, table)
+    return _bigquery_insert(row, parameterized, table)
 
+
+def _postgres_insert(row: CustomerIn, parameterized: bool, table: str) -> list[Piece]:
+    head = f"INSERT INTO {table} ({_COLUMN_LIST})\n"
+    if parameterized:
+        return [(head + "VALUES ($1, $2, $3, $4);", None)]
+    return [(head + "VALUES (\n", None), *concatenated_values(row), (");", None)]
+
+
+def _bigquery_insert(row: CustomerIn, parameterized: bool, table: str) -> list[Piece]:
     # BigQuery has no auto-increment, so the next id is computed inside the statement. Two
     # concurrent inserts can read the same MAX(id) and get the same id; that is acceptable for
     # this single-user demo table (ids are only used for ordering and display).

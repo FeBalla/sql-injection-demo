@@ -1,4 +1,4 @@
-"""Unit tests for the BigQuery backend with a stubbed client (no GCP access needed)."""
+"""Unit tests for the BigQuery database with a stubbed client (no GCP access needed)."""
 
 from collections.abc import Callable
 from typing import Any
@@ -12,9 +12,10 @@ from google.cloud import bigquery
 
 from app.config import Settings
 from app.main import create_app
-from app.modules.sql_injection.backends.base import DatabaseUnavailableError
-from app.modules.sql_injection.backends.bigquery import BigQueryBackend, _error_message
-from app.modules.sql_injection.statements import build_statement
+from app.modules.sql_injection.databases.bigquery.database import BigQueryDatabase
+from app.modules.sql_injection.databases.bigquery.errors import redacted_error_message
+from app.modules.sql_injection.databases.protocol import DatabaseUnavailableError
+from app.modules.sql_injection.statements.builder import build_statement
 
 from .samples import APOSTROPHE
 
@@ -52,10 +53,10 @@ class FakeClient:
         return self._job
 
 
-def backend_with(client: FakeClient, **settings: Any) -> BigQueryBackend:
-    backend = BigQueryBackend(Settings(gcp_project_id=PROJECT, **settings))
-    backend.__dict__["_client_or_reason"] = client  # pre-fills the cached_property
-    return backend
+def database_with(client: FakeClient, **settings: Any) -> BigQueryDatabase:
+    database = BigQueryDatabase(Settings(gcp_project_id=PROJECT, **settings))
+    database.__dict__["_client_or_reason"] = client  # pre-fills the cached_property
+    return database
 
 
 def raise_(exc: Exception) -> Callable[[], Any]:
@@ -71,12 +72,12 @@ def test_error_message_redacts_project_and_service_account() -> None:
         f"lab-runner@{PROJECT}.iam.gserviceaccount.com in project {PROJECT}"
     )
     exc = Forbidden("ignored", errors=[{"message": message}])
-    assert _error_message(exc, PROJECT) == (
+    assert redacted_error_message(exc, PROJECT) == (
         "Access Denied: Table <project>:injection_lab.customers: Permission denied for "
         "<service-account> in project <project>"
     )
     other = Exception("sa@another-project.iam.gserviceaccount.com cannot read projects/x")
-    assert _error_message(other, PROJECT) == "<service-account> cannot read projects/x"
+    assert redacted_error_message(other, PROJECT) == "<service-account> cannot read projects/x"
 
 
 TRANSPORT_ERRORS = [
@@ -94,13 +95,13 @@ def test_transport_errors_mean_unavailable(error: Exception, fails_on: str) -> N
         if fails_on == "query"
         else FakeClient(job=FakeJob(raise_(error)))
     )
-    backend = backend_with(client)
-    statement = build_statement("bigquery", APOSTROPHE, True, backend.statement_table)
+    database = database_with(client)
+    statement = build_statement("bigquery", APOSTROPHE, True, database.statement_table)
     calls: list[Callable[[], Any]] = [
-        backend.count,
-        lambda: backend.page(5, 0),
-        backend.reset,
-        lambda: backend.execute(statement),
+        database.count,
+        lambda: database.page(5, 0),
+        database.reset,
+        lambda: database.execute(statement),
     ]
     for call in calls:
         with pytest.raises(DatabaseUnavailableError) as raised:
@@ -110,7 +111,7 @@ def test_transport_errors_mean_unavailable(error: Exception, fails_on: str) -> N
 
 def test_transport_errors_are_served_as_503() -> None:
     app = create_app(Settings(database_url="", gcp_project_id=PROJECT))
-    app.state.sql_injection_backends["bigquery"].__dict__["_client_or_reason"] = FakeClient(
+    app.state.sql_injection_databases["bigquery"].__dict__["_client_or_reason"] = FakeClient(
         query_error=RefreshError("token refresh failed")
     )
     body = {"row": APOSTROPHE.model_dump(), "parameterized": True}
@@ -127,10 +128,10 @@ def test_transport_errors_are_served_as_503() -> None:
 def test_jobs_are_time_capped_and_cancelled_when_the_wait_times_out() -> None:
     job = FakeJob(raise_(TimeoutError()))
     client = FakeClient(job=job)
-    backend = backend_with(client, bq_job_timeout_ms=2000)
-    statement = build_statement("bigquery", APOSTROPHE, True, backend.statement_table)
+    database = database_with(client, bq_job_timeout_ms=2000)
+    statement = build_statement("bigquery", APOSTROPHE, True, database.statement_table)
 
-    result = backend.execute(statement)
+    result = database.execute(statement)
 
     assert not result.ok
     assert result.error == "Cancelled: the query ran longer than 2000 ms."

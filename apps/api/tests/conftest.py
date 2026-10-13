@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
-from app.modules.sql_injection.backends.postgres import PostgresBackend
+from app.modules.sql_injection.databases.postgres import PostgresDatabase
 
 
 @pytest.fixture(scope="session")
@@ -21,13 +21,13 @@ def postgres_settings() -> Settings:
 
 
 @pytest.fixture
-def postgres(postgres_settings: Settings) -> PostgresBackend:
-    backend = PostgresBackend(postgres_settings)
-    backend.reset()
-    return backend
+def postgres(postgres_settings: Settings) -> PostgresDatabase:
+    database = PostgresDatabase(postgres_settings)
+    database.reset()
+    return database
 
 
 @pytest.fixture
-def client(postgres_settings: Settings, postgres: PostgresBackend) -> Iterator[TestClient]:
+def client(postgres_settings: Settings, postgres: PostgresDatabase) -> Iterator[TestClient]:
     with TestClient(create_app(postgres_settings)) as test_client:
         yield test_client

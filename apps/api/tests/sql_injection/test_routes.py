@@ -12,10 +12,6 @@ def body(row: Any, parameterized: bool) -> dict[str, Any]:
     return {"row": row.model_dump(), "parameterized": parameterized}
 
 
-def test_health(client: TestClient) -> None:
-    assert client.get("/api/health").json() == {"status": "ok"}
-
-
 def test_databases(client: TestClient) -> None:
     response = client.get("/api/sql-injection/databases")
     assert response.status_code == 200

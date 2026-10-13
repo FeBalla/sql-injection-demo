@@ -7,14 +7,14 @@ code. It is the moral equivalent of::
 
 Any quote, backslash or semicolon in the input becomes part of the SQL itself, so a value can
 close its string literal early and append statements of its own. The safe alternative is the
-parameterized builder in ``statements.py``, where values travel separately from the SQL text.
+parameterized branch of ``builder.py``, where values travel separately from the SQL text.
 
 The text is returned as pieces tagged with the field they came from so the preview can show
 which characters were typed by the user; joining the pieces gives the exact SQL that runs.
 """
 
-from .highlight import Piece
-from .schemas import COLUMNS, CustomerIn
+from ..schemas import COLUMNS, CustomerIn
+from ..sql_analysis.analysis import Piece
 
 
 def concatenated_values(row: CustomerIn) -> list[Piece]:

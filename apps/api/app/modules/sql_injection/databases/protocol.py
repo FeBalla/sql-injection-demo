@@ -19,7 +19,7 @@ class Execution:
     error: str | None = None
 
 
-class Backend(Protocol):
+class Database(Protocol):
     id: Db
     label: str
     table: str

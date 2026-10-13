@@ -15,15 +15,15 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
-    backends = sql_injection.create_backends(settings)
+    databases = sql_injection.create_databases(settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        sql_injection.seed_empty_tables(backends)
+        sql_injection.seed_empty_tables(databases)
         yield
 
     app = FastAPI(title="Injection Lab API", lifespan=lifespan)
-    app.state.sql_injection_backends = backends
+    app.state.sql_injection_databases = databases
 
     @app.exception_handler(sql_injection.DatabaseUnavailableError)
     async def database_unavailable(
