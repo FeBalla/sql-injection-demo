@@ -1,5 +1,6 @@
 """Integration tests against the Postgres test database (injection_lab_test)."""
 
+import time
 from typing import Any
 
 import psycopg
@@ -109,3 +110,19 @@ def test_executed_sql_is_the_previewed_sql(
     assert query == preview.sql
     expected_params = [p.value for p in preview.params] if parameterized else None
     assert params == expected_params
+
+
+def test_watchdog_cancels_statements_that_disable_the_timeout(
+    postgres_settings: Settings, postgres: PostgresBackend
+) -> None:
+    """The executed SQL can turn statement_timeout off; the client-side watchdog still fires."""
+    backend = PostgresBackend(postgres_settings.model_copy(update={"statement_timeout_ms": 300}))
+    row = malicious(postgres.table).model_copy(
+        update={"plan": "free'); SET statement_timeout = 0; SELECT pg_sleep(30); SELECT ('"}
+    )
+    started = time.monotonic()
+    result = backend.execute(statement(backend, row, parameterized=False))
+    assert time.monotonic() - started < 5
+    assert not result.ok
+    assert result.error == "Cancelled: the statement ran longer than 300 ms."
+    assert result.total_rows == 12  # the INSERT before the sleep was rolled back

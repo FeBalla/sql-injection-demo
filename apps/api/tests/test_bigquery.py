@@ -3,8 +3,11 @@
 Skipped unless GCP_PROJECT_ID is set and Application Default Credentials are available.
 """
 
+from collections.abc import Iterator
+
 import pytest
 
+from app.config import Settings
 from app.modules.sql_injection.backends.bigquery import BigQueryBackend
 from app.modules.sql_injection.schemas import CustomerIn, StatementPreview
 from app.modules.sql_injection.statements import build_statement
@@ -16,6 +19,21 @@ pytestmark = pytest.mark.bigquery
 
 def statement(backend: BigQueryBackend, row: CustomerIn, parameterized: bool) -> StatementPreview:
     return build_statement(backend.id, row, parameterized, backend.statement_table)
+
+
+@pytest.fixture(scope="module")
+def bigquery() -> Iterator[BigQueryBackend]:
+    """A scratch ``customers_test`` table in the configured dataset, dropped afterwards."""
+    backend = BigQueryBackend(Settings(bq_table="customers_test"))
+    available, reason = backend.availability()
+    if not available:
+        pytest.skip(f"BigQuery unavailable: {reason}")
+    try:
+        yield backend
+    finally:
+        client = backend._client_or_reason
+        assert not isinstance(client, str)
+        client.query(f"DROP TABLE IF EXISTS `{backend.table}`").result(timeout=60)
 
 
 @pytest.fixture

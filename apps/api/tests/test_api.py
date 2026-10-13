@@ -51,11 +51,19 @@ def test_customers_pagination(client: TestClient) -> None:
     assert set(data["rows"][0]) == {"id", "name", "email", "country", "plan"}
 
 
+def test_last_allowed_page_is_empty(client: TestClient) -> None:
+    response = client.get("/api/sql-injection/postgres/customers?page=100000&page_size=50")
+    assert response.status_code == 200
+    assert response.json()["rows"] == []
+
+
 @pytest.mark.parametrize(
     "url",
     [
         "/api/sql-injection/postgres/customers?page_size=51",
         "/api/sql-injection/postgres/customers?page=0",
+        "/api/sql-injection/postgres/customers?page=100001",
+        "/api/sql-injection/postgres/customers?page=99999999999999999999",
         "/api/sql-injection/mysql/customers",
     ],
 )

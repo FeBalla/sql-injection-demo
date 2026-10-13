@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
-from app.modules.sql_injection.backends.bigquery import BigQueryBackend
 from app.modules.sql_injection.backends.postgres import PostgresBackend
 
 
@@ -32,16 +31,3 @@ def postgres(postgres_settings: Settings) -> PostgresBackend:
 def client(postgres_settings: Settings, postgres: PostgresBackend) -> Iterator[TestClient]:
     with TestClient(create_app(postgres_settings)) as test_client:
         yield test_client
-
-
-@pytest.fixture(scope="module")
-def bigquery() -> Iterator[BigQueryBackend]:
-    """A scratch ``customers_test`` table in the configured dataset, dropped afterwards."""
-    backend = BigQueryBackend(Settings(bq_table="customers_test"))
-    available, reason = backend.availability()
-    if not available:
-        pytest.skip(f"BigQuery unavailable: {reason}")
-    try:
-        yield backend
-    finally:
-        backend.drop()

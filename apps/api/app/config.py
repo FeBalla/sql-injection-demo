@@ -16,5 +16,8 @@ class Settings(BaseSettings):
     bq_table: str = "customers"
     bq_location: str = "US"
 
+    bq_job_timeout_ms: int = 30_000
+    """Upper bound for any BigQuery job; the client also cancels jobs it stops waiting for."""
+
     statement_timeout_ms: int = 5000
     """Upper bound for any Postgres statement, so injected SQL cannot hog the database."""

@@ -58,7 +58,8 @@ def list_databases(
 @router.get("/{db}/customers")
 def list_customers(
     backend: AvailableBackend,
-    page: Annotated[int, Query(ge=1)] = 1,
+    # Bounded so (page - 1) * page_size always fits the databases' 64-bit OFFSET.
+    page: Annotated[int, Query(ge=1, le=100_000)] = 1,
     page_size: Annotated[int, Query(ge=1, le=50)] = 5,
 ) -> CustomerPage:
     return CustomerPage(

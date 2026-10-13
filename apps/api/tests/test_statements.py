@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.modules.sql_injection.highlight import count_statements, tokenize
+from app.modules.sql_injection.highlight import analyze, count_statements, tokenize
 from app.modules.sql_injection.schemas import CustomerIn, Db, StatementPreview
 from app.modules.sql_injection.statements import build_statement
 
@@ -178,6 +178,8 @@ def test_bigquery_leading_quotes_open_a_triple_quoted_string() -> None:
         APOSTROPHE,
         malicious("public.customers"),
         CustomerIn(name="multi\nline", email="", country="--", plan="/* x"),
+        CustomerIn(name="$$;'$$", email="$tag$ x';$tag$", country="/* /* */ ; */", plan="$1 $a"),
+        CustomerIn(name="r'\\'", email='R"""x"""', country="E'\\''", plan="rb'; br\"'"),
     ],
 )
 def test_segments_rebuild_the_exact_sql(db: Db, parameterized: bool, row: CustomerIn) -> None:
@@ -198,10 +200,58 @@ def test_segments_rebuild_the_exact_sql(db: Db, parameterized: bool, row: Custom
         ("bigquery", "SELECT '''a;\n';b''' # ; comment", 1),
         ("bigquery", 'SELECT 1 FROM `a;b`; SELECT "x;"', 2),
         ("bigquery", "", 0),
+        # Postgres dollar quoting (no escapes inside; other tags and `$1` are plain text).
+        ("postgres", "SELECT $$a;b$$; SELECT 2", 2),
+        ("postgres", "SELECT $tag$ it's; $$ $other$ ; $tag$; SELECT 2", 2),
+        ("postgres", "SELECT $_t1$ \\$_t1$; SELECT 2", 2),
+        ("postgres", "SELECT $$unterminated; DELETE FROM t", 1),
+        ("postgres", "SELECT $1; SELECT $2", 2),
+        ("postgres", "SELECT a$$b; SELECT 2", 2),  # `$` inside an identifier quotes nothing
+        # Postgres block comments nest; BigQuery's do not.
+        ("postgres", "/* outer /* inner */ still a comment; */ SELECT 1", 1),
+        ("postgres", "SELECT 1 /* /* */ ; */; SELECT 2", 2),
+        ("postgres", "SELECT 1 /* /* */ unterminated; SELECT 2", 1),
+        ("bigquery", "SELECT 1 /* /* */ ; */", 2),
+        # Postgres E'' strings accept backslash escapes; standard strings do not.
+        ("postgres", "SELECT E'it\\'s; fine'; SELECT 2", 2),
+        ("postgres", "SELECT e'a\\\\'; SELECT 2", 2),
+        ("postgres", "SELECT 'a\\'; SELECT 2", 2),
+        # BigQuery raw/bytes prefixes: backslashes are kept, but an escaped quote still does not
+        # close the literal (GoogleSQL lexes raw and non-raw strings the same way).
+        ("bigquery", "SELECT r'a\\'; b'; SELECT 2", 2),
+        ("bigquery", 'SELECT R"a\\"; b"; SELECT 2', 2),
+        ("bigquery", "SELECT r'''a;\n'; ''' ; SELECT 2", 2),
+        ("bigquery", 'SELECT Rb"""x"; """; SELECT 2', 2),
+        ("bigquery", "SELECT bR'a;b' FROM t", 1),
+        ("bigquery", "SELECT r'unterminated; SELECT 2", 1),
     ],
 )
 def test_count_statements(db: Db, sql: str, expected: int) -> None:
     assert count_statements(tokenize(sql, db)) == expected
+    lines = analyze([(sql, None)], db).lines
+    assert "\n".join("".join(segment.text for segment in line) for line in lines) == sql
+
+
+@pytest.mark.parametrize(
+    ("db", "sql", "expected"),
+    [
+        (
+            "postgres",
+            "$1 $$a$$ $t$b$t$ E'c'",
+            [("$1", "param"), ("$$a$$", "string"), ("$t$b$t$", "string"), ("E'c'", "string")],
+        ),
+        (
+            "bigquery",
+            "@p r'a' RB\"b\" r'''c'''",
+            [("@p", "param"), ("r'a'", "string"), ('RB"b"', "string"), ("r'''c'''", "string")],
+        ),
+    ],
+)
+def test_prefixed_and_dollar_quoted_strings_are_single_tokens(
+    db: Db, sql: str, expected: list[tuple[str, str]]
+) -> None:
+    tokens = [token for token in tokenize(sql, db) if token.kind != "space"]
+    assert [(sql[token.start : token.end], token.kind) for token in tokens] == expected
 
 
 def test_keywords_exclude_function_names() -> None:

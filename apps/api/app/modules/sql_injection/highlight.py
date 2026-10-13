@@ -10,12 +10,20 @@ It answers three questions about a statement:
 It is not a full parser: it only knows enough of each dialect's literal, identifier and comment
 syntax to find where strings start and end, which is exactly what SQL injection abuses.
 
-Postgres: ``'...'`` strings with ``''`` as the escaped quote (standard_conforming_strings on),
-``"..."`` identifiers, ``--`` and ``/* */`` comments, ``$1`` parameters. Dollar quoting and
-``E'...'`` strings are not handled; the demo templates never produce them.
+The templates only ever emit plain quoted strings, but concatenated user input can produce any
+syntax the database accepts, so the lexer covers every way a string or comment can start:
 
-BigQuery: ``'...'`` / ``"..."`` and triple-quoted strings with backslash escapes, backtick
-identifiers, ``--``, ``#`` and ``/* */`` comments, ``@name`` parameters.
+Postgres: ``'...'`` strings with ``''`` as the escaped quote (standard_conforming_strings on),
+``E'...'`` strings that also accept backslash escapes, dollar-quoted strings (``$$...$$`` and
+``$tag$...$tag$``, no escapes), ``"..."`` identifiers, ``--`` and nested ``/* /* */ */``
+comments, ``$1`` parameters. ``U&'...'`` strings lex like plain strings, which they are for
+finding where they end.
+
+BigQuery: ``'...'`` / ``"..."`` and triple-quoted strings with backslash escapes, optionally
+prefixed with ``r``, ``b``, ``rb`` or ``br`` (any case). Raw strings keep their backslashes, but
+an escaped quote still does not close them (as in GoogleSQL's own lexer), so they end exactly
+where non-raw strings do. Backtick identifiers, ``--``, ``#`` and ``/* */`` comments (not
+nested), ``@name`` parameters.
 """
 
 from collections.abc import Sequence
@@ -45,6 +53,11 @@ KEYWORDS = frozenset({
 
 _STRING_QUOTES: dict[Db, str] = {"postgres": "'", "bigquery": "'\""}
 _IDENTIFIER_QUOTES: dict[Db, str] = {"postgres": '"', "bigquery": "`"}
+_STRING_PREFIXES: dict[Db, frozenset[str]] = {
+    "postgres": frozenset({"e"}),
+    "bigquery": frozenset({"r", "b", "rb", "br"}),
+}
+"""Lowercased prefixes that can start a string literal right before its opening quote."""
 
 
 @dataclass(frozen=True)
@@ -75,8 +88,14 @@ class Analysis:
     escaped_fields: list[Column]
 
 
-def scan_quoted(sql: str, start: int, dialect: Db) -> QuotedScan:
-    """Scan the quoted literal whose opening delimiter is at ``sql[start]``."""
+def scan_quoted(
+    sql: str, start: int, dialect: Db, *, backslash_escapes: bool = False
+) -> QuotedScan:
+    """Scan the quoted literal whose opening delimiter is at ``sql[start]``.
+
+    Backslash escapes always apply on BigQuery; on Postgres only with ``backslash_escapes``
+    (``E'...'`` strings).
+    """
     quote = sql[start]
     triple = dialect == "bigquery" and quote in "'\"" and sql.startswith(quote * 3, start)
     delimiter = quote * 3 if triple else quote
@@ -84,7 +103,7 @@ def scan_quoted(sql: str, start: int, dialect: Db) -> QuotedScan:
     escapes: list[tuple[int, int]] = []
     i = open_end
     while i < len(sql):
-        if dialect == "bigquery" and sql[i] == "\\":
+        if (dialect == "bigquery" or backslash_escapes) and sql[i] == "\\":
             escapes.append((i, min(i + 2, len(sql))))
             i += 2
         elif dialect == "postgres" and sql.startswith(quote * 2, i):
@@ -113,16 +132,23 @@ def tokenize(sql: str, dialect: Db) -> list[Token]:
         elif sql.startswith("--", i) or (dialect == "bigquery" and c == "#"):
             kind, j = "comment", _find_or_end(sql, "\n", i)
         elif sql.startswith("/*", i):
-            close = sql.find("*/", i + 2)
-            kind, j = "comment", (n if close < 0 else close + 2)
+            kind, j = "comment", _block_comment_end(sql, i, nested=dialect == "postgres")
         elif c in _STRING_QUOTES[dialect]:
             kind, j = "string", scan_quoted(sql, i, dialect).end
         elif c in _IDENTIFIER_QUOTES[dialect]:
             kind, j = "identifier", scan_quoted(sql, i, dialect).end
+        elif (quote := _prefixed_quote(sql, i, dialect)) is not None:
+            kind, j = "string", scan_quoted(sql, quote, dialect, backslash_escapes=True).end
         elif c.isalpha() or c == "_":
             kind, j = "word", i + 1
-            while j < n and (sql[j].isalnum() or sql[j] == "_"):
+            # Postgres identifiers may contain `$` after the first character (so `a$$` is a word).
+            while j < n and (
+                sql[j].isalnum() or sql[j] == "_" or (dialect == "postgres" and sql[j] == "$")
+            ):
                 j += 1
+        elif dialect == "postgres" and (tag := _dollar_quote_tag(sql, i)) is not None:
+            close = sql.find(tag, i + len(tag))
+            kind, j = "string", (n if close < 0 else close + len(tag))
         elif (dialect == "postgres" and c == "$" and nxt.isdigit()) or (
             dialect == "bigquery" and c == "@" and (nxt.isalpha() or nxt == "_")
         ):
@@ -222,6 +248,49 @@ def _split_lines(sql: str, kinds: Sequence[SegmentKind]) -> list[list[Segment]]:
         else:
             line.append(Segment(text=char, kind=kind))
     return lines
+
+
+def _block_comment_end(sql: str, start: int, *, nested: bool) -> int:
+    """End of the ``/* */`` comment at ``sql[start]``. Postgres nests them, BigQuery does not."""
+    depth = 0
+    i = start
+    while i < len(sql):
+        if sql.startswith("/*", i) and (nested or depth == 0):
+            depth, i = depth + 1, i + 2
+        elif sql.startswith("*/", i):
+            depth, i = depth - 1, i + 2
+            if depth == 0:
+                return i
+        else:
+            i += 1
+    return len(sql)
+
+
+def _prefixed_quote(sql: str, start: int, dialect: Db) -> int | None:
+    """Index of the opening quote if a prefixed string (``E'``, ``r'``, ``rb"``...) starts here."""
+    for quote in (start + 1, start + 2):
+        if (
+            quote < len(sql)
+            and sql[quote] in _STRING_QUOTES[dialect]
+            and sql[start:quote].lower() in _STRING_PREFIXES[dialect]
+        ):
+            return quote
+    return None
+
+
+def _dollar_quote_tag(sql: str, start: int) -> str | None:
+    """The ``$$`` or ``$tag$`` opening a Postgres dollar-quoted string at ``sql[start]``, if any.
+
+    A tag cannot start with a digit, so ``$1`` stays a parameter.
+    """
+    if sql[start] != "$":
+        return None
+    j = start + 1
+    if j < len(sql) and (sql[j].isalpha() or sql[j] == "_"):
+        j += 1
+        while j < len(sql) and (sql[j].isalnum() or sql[j] == "_"):
+            j += 1
+    return sql[start : j + 1] if j < len(sql) and sql[j] == "$" else None
 
 
 def _find_or_end(sql: str, needle: str, start: int) -> int:

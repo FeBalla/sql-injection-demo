@@ -1,7 +1,8 @@
 """Postgres backend (psycopg 3), connected as the least-privilege ``lab_app`` role."""
 
+import threading
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 
 import psycopg
 from psycopg.rows import dict_row
@@ -65,13 +66,34 @@ class PostgresBackend:
         # needs). Autocommit makes each request its own transaction.
         params = [param.value for param in statement.params] if statement.parameterized else None
         with self._connect() as conn:
+            # statement_timeout is only a session default: the executed SQL can raise or disable
+            # it (`SET statement_timeout = 0; ...`). This client-side watchdog cancels the run
+            # after the same time limit regardless of what the SQL did to its session.
+            timed_out = threading.Event()
+
+            def cancel() -> None:
+                timed_out.set()
+                with suppress(psycopg.Error):
+                    conn.cancel_safe()
+
+            watchdog = threading.Timer(self._statement_timeout_ms / 1000, cancel)
+            watchdog.start()
             try:
                 with conn.cursor() as cur:
                     cur.execute(statement.sql, params)
                     rows_affected = _rows_affected(cur)
             except psycopg.Error as exc:
-                return Execution(False, None, _count_or_none(conn), _error_message(exc))
+                error = self._timeout_error() if timed_out.is_set() else _error_message(exc)
+            else:
+                error = None
+            finally:
+                watchdog.cancel()
+            if error is not None:
+                return Execution(False, None, _count_or_none(conn), error)
             return Execution(True, rows_affected, _count_or_none(conn))
+
+    def _timeout_error(self) -> str:
+        return f"Cancelled: the statement ran longer than {self._statement_timeout_ms} ms."
 
     @contextmanager
     def _connect(self) -> Iterator[psycopg.Connection]:

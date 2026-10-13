@@ -33,7 +33,9 @@ def _pieces(db: Db, row: CustomerIn, parameterized: bool, table: str) -> list[Pi
             return [(head + "VALUES ($1, $2, $3, $4);", None)]
         return [(head + "VALUES (\n", None), *concatenated_values(row), (");", None)]
 
-    # BigQuery has no auto-increment, so the next id is computed inside the statement.
+    # BigQuery has no auto-increment, so the next id is computed inside the statement. Two
+    # concurrent inserts can read the same MAX(id) and get the same id; that is acceptable for
+    # this single-user demo table (ids are only used for ordering and display).
     head = (
         f"INSERT INTO `{table}` (id, {_COLUMN_LIST})\n"
         "VALUES (\n"
