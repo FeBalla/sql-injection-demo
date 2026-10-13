@@ -35,7 +35,7 @@ export function statusCopy(preview: StatementPreview): StatusCopy {
     return {
       tone: "safe",
       title: "Values travel separately from the SQL",
-      body: `The database parses the statement first, then binds ${placeholderList(preview)} as plain data. Quotes inside a value can no longer change the query.`,
+      body: `The database parses the statement first, then binds ${placeholderList(preview)} as plain data. Input values can no longer change the query.`,
       shortTitle: "Values travel separately",
       shortBody: "The query is parsed first; values are bound as plain data.",
     };

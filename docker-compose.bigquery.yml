@@ -7,5 +7,7 @@ services:
   api:
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-adc.json
+      # Lets google-auth find the project without probing the environment.
+      GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT_ID:?Set GCP_PROJECT_ID}
     volumes:
       - ${GCP_ADC_FILE:?Set GCP_ADC_FILE to your ADC file path}:/run/secrets/gcp-adc.json:ro
