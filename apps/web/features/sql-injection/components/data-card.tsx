@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { KeyboardEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -14,8 +14,6 @@ type DataCardProps = {
   pageCount: number;
   initialLoading: boolean;
   error: string | null;
-  selectedId: number | null;
-  onSelect: (customer: Customer) => void;
   onPageChange: (page: number) => void;
   className?: string;
 };
@@ -29,8 +27,6 @@ export function DataCard({
   pageCount,
   initialLoading,
   error,
-  selectedId,
-  onSelect,
   onPageChange,
   className,
 }: DataCardProps) {
@@ -56,32 +52,17 @@ export function DataCard({
         className,
       )}
     >
-      <div className="flex items-baseline justify-between gap-3 px-4 py-3.5 md:items-center md:px-5 md:py-4">
-        <div className="flex min-w-0 flex-1 items-baseline justify-between gap-2.5 md:flex-none md:justify-start">
-          <h2 id="data-title" className="text-base font-semibold">
-            Data
-          </h2>
-          <span className="truncate font-mono text-xs text-muted-foreground md:text-[13px]">
-            {table}
-          </span>
-        </div>
-        <span className="hidden text-[13px] text-muted-foreground md:block">
-          Click a row to select it
+      <div className="flex items-baseline justify-between gap-2.5 px-4 py-3.5 md:justify-start md:px-5 md:py-4">
+        <h2 id="data-title" className="text-base font-semibold">
+          Data
+        </h2>
+        <span className="truncate font-mono text-xs text-muted-foreground md:text-[13px]">
+          {table}
         </span>
       </div>
 
-      <DataTable
-        rows={rows}
-        selectedId={selectedId}
-        onSelect={onSelect}
-        emptyMessage={emptyMessage}
-      />
-      <DataList
-        rows={rows}
-        selectedId={selectedId}
-        onSelect={onSelect}
-        emptyMessage={emptyMessage}
-      />
+      <DataTable rows={rows} emptyMessage={emptyMessage} />
+      <DataList rows={rows} emptyMessage={emptyMessage} />
 
       <nav
         aria-label="Table pages"
@@ -114,35 +95,14 @@ export function DataCard({
 
 type RowsProps = {
   rows: Customer[];
-  selectedId: number | null;
-  onSelect: (customer: Customer) => void;
   emptyMessage: ReactNode;
 };
 
-function DataTable({ rows, selectedId, onSelect, emptyMessage }: RowsProps) {
-  function handleKeyDown(
-    event: KeyboardEvent<HTMLTableRowElement>,
-    customer: Customer,
-  ) {
-    const row = event.currentTarget;
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onSelect(customer);
-    } else if (event.key === "ArrowDown") {
-      event.preventDefault();
-      (row.nextElementSibling as HTMLElement | null)?.focus();
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      (row.previousElementSibling as HTMLElement | null)?.focus();
-    }
-  }
-
+function DataTable({ rows, emptyMessage }: RowsProps) {
   return (
     <div className="hidden overflow-x-auto md:block">
       <table className="w-full border-collapse text-sm">
-        <caption className="sr-only">
-          Rows of the demo table. Press Enter or Space on a row to select it.
-        </caption>
+        <caption className="sr-only">Rows of the demo table</caption>
         <thead>
           <tr>
             {["id", ...COLUMNS].map((header) => (
@@ -167,35 +127,22 @@ function DataTable({ rows, selectedId, onSelect, emptyMessage }: RowsProps) {
               </td>
             </tr>
           ) : (
-            rows.map((customer) => {
-              const selected = customer.id === selectedId;
-              return (
-                <tr
-                  key={customer.id}
-                  tabIndex={0}
-                  aria-selected={selected}
-                  onClick={() => onSelect(customer)}
-                  onKeyDown={(event) => handleKeyDown(event, customer)}
-                  className={cn(
-                    "cursor-pointer outline-info transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2",
-                    selected ? "bg-info-soft" : "hover:bg-surface-subtle",
-                  )}
-                >
-                  <td className="border-b border-divider px-3.5 py-[11px] font-mono whitespace-nowrap">
-                    {customer.id}
+            rows.map((customer) => (
+              <tr key={customer.id}>
+                <td className="border-b border-divider px-3.5 py-[11px] font-mono whitespace-nowrap">
+                  {customer.id}
+                </td>
+                {COLUMNS.map((column) => (
+                  <td
+                    key={column}
+                    className="max-w-[16rem] truncate border-b border-divider px-3.5 py-[11px] whitespace-nowrap"
+                    title={customer[column]}
+                  >
+                    {customer[column]}
                   </td>
-                  {COLUMNS.map((column) => (
-                    <td
-                      key={column}
-                      className="max-w-[16rem] truncate border-b border-divider px-3.5 py-[11px] whitespace-nowrap"
-                      title={customer[column]}
-                    >
-                      {customer[column]}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })
+                ))}
+              </tr>
+            ))
           )}
         </tbody>
       </table>
@@ -203,7 +150,7 @@ function DataTable({ rows, selectedId, onSelect, emptyMessage }: RowsProps) {
   );
 }
 
-function DataList({ rows, selectedId, onSelect, emptyMessage }: RowsProps) {
+function DataList({ rows, emptyMessage }: RowsProps) {
   if (emptyMessage) {
     return (
       <p className="border-t border-divider px-4 py-6 text-center text-sm text-muted-foreground md:hidden">
@@ -213,35 +160,25 @@ function DataList({ rows, selectedId, onSelect, emptyMessage }: RowsProps) {
   }
   return (
     <ul className="md:hidden" aria-label="Rows of the demo table">
-      {rows.map((customer) => {
-        const selected = customer.id === selectedId;
-        return (
-          <li key={customer.id} className="border-t border-divider">
-            <button
-              type="button"
-              aria-pressed={selected}
-              onClick={() => onSelect(customer)}
-              className={cn(
-                "flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left outline-info focus-visible:outline-2 focus-visible:-outline-offset-2",
-                selected && "bg-info-soft",
-              )}
-            >
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="truncate text-[15px] font-medium">
-                  {customer.name}
-                </span>
-                <span className="truncate text-[13px] text-muted-foreground">
-                  {customer.email}
-                </span>
-              </span>
-              <span className="flex flex-none gap-1.5">
-                <Tag>{customer.country}</Tag>
-                <Tag>{customer.plan}</Tag>
-              </span>
-            </button>
-          </li>
-        );
-      })}
+      {rows.map((customer) => (
+        <li
+          key={customer.id}
+          className="flex min-h-11 items-center justify-between gap-3 border-t border-divider px-4 py-3"
+        >
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-[15px] font-medium">
+              {customer.name}
+            </span>
+            <span className="truncate text-[13px] text-muted-foreground">
+              {customer.email}
+            </span>
+          </span>
+          <span className="flex flex-none gap-1.5">
+            <Tag>{customer.country}</Tag>
+            <Tag>{customer.plan}</Tag>
+          </span>
+        </li>
+      ))}
     </ul>
   );
 }

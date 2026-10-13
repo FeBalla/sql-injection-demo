@@ -19,7 +19,6 @@ import {
 } from "../quick-fill";
 import { plural } from "../statement-copy";
 import type {
-  Customer,
   CustomerRow,
   DatabaseInfo,
   Db,
@@ -83,7 +82,6 @@ export function SqlInjectionLab() {
   const [row, setRow] = useState<CustomerRow>(APOSTROPHE_EDGE_CASE);
   const [parameterized, setParameterized] = useState(false);
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Customer | null>(null);
   const [message, setMessage] = useState<ResultMessage | null>(null);
   const [pending, setPending] = useState<PendingInsert | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -121,11 +119,6 @@ export function SqlInjectionLab() {
     if (next === db || dbLocked) return;
     setDb(next);
     setPage(1);
-    setSelected(null);
-  }
-
-  function toggleSelected(customer: Customer) {
-    setSelected((current) => (current?.id === customer.id ? null : customer));
   }
 
   async function review() {
@@ -157,7 +150,6 @@ export function SqlInjectionLab() {
         // Jump to the last page so the new row (if any) is visible.
         setPage(Math.max(1, Math.ceil(result.total_rows / PAGE_SIZE)));
       }
-      if (result.statement.statement_count > 1) setSelected(null);
     } catch (error) {
       showMessage({
         tone: "error",
@@ -176,7 +168,6 @@ export function SqlInjectionLab() {
     setResetting(true);
     try {
       const { total } = await resetCustomers(db);
-      setSelected(null);
       setPage(1);
       showMessage({
         tone: "info",
@@ -238,8 +229,6 @@ export function SqlInjectionLab() {
               pageCount={customers.pageCount}
               initialLoading={customers.initialLoading}
               error={customers.error}
-              selectedId={selected?.id ?? null}
-              onSelect={toggleSelected}
               onPageChange={setPage}
             />
           </div>
@@ -248,13 +237,7 @@ export function SqlInjectionLab() {
             className="order-1 md:order-none"
             row={row}
             onRowChange={setRow}
-            canCopySelected={selected !== null}
             onRandom={() => setRow(randomValidRow(row))}
-            onCopySelected={() => {
-              if (!selected) return;
-              const { name, email, country, plan } = selected;
-              setRow({ name, email, country, plan });
-            }}
             onApostrophe={() => setRow(APOSTROPHE_EDGE_CASE)}
             onMalicious={() => setRow(maliciousExample(database.table))}
             onClear={() => setRow(EMPTY_ROW)}

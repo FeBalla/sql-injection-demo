@@ -1,10 +1,4 @@
-import {
-  ArrowRight,
-  Copy,
-  Dice3,
-  LoaderCircle,
-  TriangleAlert,
-} from "lucide-react";
+import { ArrowRight, Dice3, LoaderCircle, TriangleAlert } from "lucide-react";
 import type { FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -21,9 +15,7 @@ export const INSERT_FORM_ID = "insert-form";
 type InsertFormProps = {
   row: CustomerRow;
   onRowChange: (row: CustomerRow) => void;
-  canCopySelected: boolean;
   onRandom: () => void;
-  onCopySelected: () => void;
   onApostrophe: () => void;
   onMalicious: () => void;
   onClear: () => void;
@@ -35,9 +27,7 @@ type InsertFormProps = {
 export function InsertForm({
   row,
   onRowChange,
-  canCopySelected,
   onRandom,
-  onCopySelected,
   onApostrophe,
   onMalicious,
   onClear,
@@ -77,16 +67,6 @@ export function InsertForm({
           <QuickFillChip onClick={onRandom}>
             <Dice3 aria-hidden="true" />
             Random valid row
-          </QuickFillChip>
-          <QuickFillChip
-            onClick={onCopySelected}
-            disabled={!canCopySelected}
-            title={
-              canCopySelected ? undefined : "Select a row in the table first"
-            }
-          >
-            <Copy aria-hidden="true" />
-            Copy selected row
           </QuickFillChip>
           <QuickFillChip tone="info" onClick={onApostrophe}>
             <ApostropheIcon />
