@@ -6,8 +6,6 @@ const apiUrl = process.env.API_URL ?? "http://localhost:8000";
 const nextConfig: NextConfig = {
   // The floating dev badge covers the mobile action bar.
   devIndicators: false,
-  cacheComponents: true,
-  partialPrefetching: true,
   turbopack: {
     rules: {
       "*.css": {

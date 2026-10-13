@@ -11,29 +11,39 @@ type Loaded = {
   error: string | null;
 };
 
+function requestKey(db: Db, page: number, version: number) {
+  return `${db}:${page}:${version}`;
+}
+
 /** One page of the demo table. `refresh` reloads it (after an insert or reset). */
 export function useCustomers(db: Db, page: number) {
   const [version, setVersion] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const key = `${db}:${page}:${version}`;
+  const key = requestKey(db, page, version);
 
   useEffect(() => {
+    const requested = requestKey(db, page, version);
     const controller = new AbortController();
     listCustomers(db, page, controller.signal)
       .then((data) =>
-        setLoaded({ key, rows: data.rows, total: data.total, error: null }),
+        setLoaded({
+          key: requested,
+          rows: data.rows,
+          total: data.total,
+          error: null,
+        }),
       )
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setLoaded({
-          key,
+          key: requested,
           rows: [],
           total: 0,
           error: error instanceof Error ? error.message : String(error),
         });
       });
     return () => controller.abort();
-  }, [db, page, key]);
+  }, [db, page, version]);
 
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
   const total = loaded?.total ?? 0;

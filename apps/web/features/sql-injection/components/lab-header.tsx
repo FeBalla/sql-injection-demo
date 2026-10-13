@@ -10,6 +10,7 @@ type LabHeaderProps = {
   databases: DatabaseInfo[];
   db: Db;
   onDbChange: (db: Db) => void;
+  dbDisabled?: boolean;
   onReset: () => void;
   resetting: boolean;
 };
@@ -18,6 +19,7 @@ export function LabHeader({
   databases,
   db,
   onDbChange,
+  dbDisabled = false,
   onReset,
   resetting,
 }: LabHeaderProps) {
@@ -47,6 +49,7 @@ export function LabHeader({
           databases={databases}
           value={db}
           onChange={onDbChange}
+          disabled={dbDisabled}
         />
         <button
           type="button"

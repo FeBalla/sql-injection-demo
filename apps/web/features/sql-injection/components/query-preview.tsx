@@ -1,5 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useScrollFade } from "@/hooks/use-scroll-fade";
 import { cn } from "@/lib/utils";
 
 import type { StatementPreview } from "../types";
@@ -22,6 +23,7 @@ export function QueryPreview({
   onParameterizedChange,
   className,
 }: QueryPreviewProps) {
+  const codeRef = useScrollFade<HTMLDivElement>();
   return (
     <section
       aria-labelledby="preview-title"
@@ -60,10 +62,11 @@ export function QueryPreview({
       </div>
 
       <div
+        ref={codeRef}
         aria-live="off"
         aria-label="SQL statement"
         role="region"
-        className="overflow-x-auto py-3 md:py-4"
+        className="overflow-x-auto py-3 data-more:[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)] md:py-4"
       >
         {preview ? (
           <CodeLines lines={preview.lines} />

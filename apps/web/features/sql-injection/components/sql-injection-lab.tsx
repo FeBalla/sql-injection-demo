@@ -36,7 +36,12 @@ import { MobileActionBar } from "./mobile-action-bar";
 import { QueryPreview } from "./query-preview";
 import { ResultAlert, type ResultMessage } from "./result-alert";
 
-type PendingInsert = { request: StatementRequest; statement: StatementPreview };
+/** What the user is reviewing; the insert runs against this exact database. */
+type PendingInsert = {
+  database: DatabaseInfo;
+  request: StatementRequest;
+  statement: StatementPreview;
+};
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -91,6 +96,11 @@ export function SqlInjectionLab() {
   const database: DatabaseInfo =
     databases.find((item) => item.id === db) ?? databases[0];
   const customers = useCustomers(db, page);
+  // The table can shrink under us (another tab, an injected DELETE): stay on a
+  // page that exists instead of showing an empty one past the end.
+  if (!customers.loading && !customers.error && page > customers.pageCount) {
+    setPage(customers.pageCount);
+  }
   const preview = useStatementPreview(db, { row, parameterized });
 
   function showMessage(next: ResultMessage) {
@@ -104,8 +114,11 @@ export function SqlInjectionLab() {
     );
   }
 
+  // The database stays fixed while an insert is being reviewed or run.
+  const dbLocked = reviewing || confirmOpen || running;
+
   function changeDb(next: Db) {
-    if (next === db) return;
+    if (next === db || dbLocked) return;
     setDb(next);
     setPage(1);
     setSelected(null);
@@ -117,10 +130,11 @@ export function SqlInjectionLab() {
 
   async function review() {
     const request: StatementRequest = { row, parameterized };
+    const target = database;
     setReviewing(true);
     try {
-      const statement = await previewStatement(db, request);
-      setPending({ request, statement });
+      const statement = await previewStatement(target.id, request);
+      setPending({ database: target, request, statement });
       setConfirmOpen(true);
     } catch (error) {
       showMessage({
@@ -137,8 +151,8 @@ export function SqlInjectionLab() {
     if (!pending) return;
     setRunning(true);
     try {
-      const result = await insertCustomer(db, pending.request);
-      showMessage(insertMessage(result, database.table));
+      const result = await insertCustomer(pending.database.id, pending.request);
+      showMessage(insertMessage(result, pending.database.table));
       if (result.ok && result.total_rows !== null) {
         // Jump to the last page so the new row (if any) is visible.
         setPage(Math.max(1, Math.ceil(result.total_rows / PAGE_SIZE)));
@@ -188,6 +202,7 @@ export function SqlInjectionLab() {
         databases={databases}
         db={db}
         onDbChange={changeDb}
+        dbDisabled={dbLocked}
         onReset={resetData}
         resetting={resetting}
       />
@@ -197,6 +212,7 @@ export function SqlInjectionLab() {
           databases={databases}
           value={db}
           onChange={changeDb}
+          disabled={dbLocked}
           className="md:hidden"
         />
 
@@ -265,7 +281,7 @@ export function SqlInjectionLab() {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         statement={pending?.statement ?? null}
-        database={database}
+        database={pending?.database ?? database}
         running={running}
         onConfirm={runInsert}
       />

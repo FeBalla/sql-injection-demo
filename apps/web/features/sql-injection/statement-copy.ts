@@ -46,16 +46,16 @@ export function statusCopy(preview: StatementPreview): StatusCopy {
   const field = preview.escaped_fields[0];
 
   if (field && preview.statement_count > 1) {
-    const body = `The value in ${field} ends the string literal and turns this into ${preview.statement_count} statements, all of which will run.`;
+    const body = `The value in ${field} breaks out of its string literal and turns this into ${preview.statement_count} statements, all sent to the database in one request.`;
     return { tone: "unsafe", title, body, shortTitle, shortBody: body };
   }
   if (field) {
     return {
       tone: "unsafe",
       title,
-      body: `The apostrophe in ${field} closes the string literal early, so this query fails. A crafted value could do worse: rewrite the statement or add another one.`,
+      body: `The value in ${field} breaks out of its string literal, so it is now part of the SQL. A crafted value could rewrite the statement or add another one.`,
       shortTitle,
-      shortBody: `The apostrophe in ${field} closes the string early, so this query fails.`,
+      shortBody: `The value in ${field} breaks out of its string and is now SQL.`,
     };
   }
   const body =

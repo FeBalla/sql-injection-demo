@@ -4,7 +4,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 import { PAGE_SIZE } from "../api";
-import type { Customer } from "../types";
+import { COLUMNS, type Customer } from "../types";
 
 type DataCardProps = {
   table: string;
@@ -34,13 +34,16 @@ export function DataCard({
   onPageChange,
   className,
 }: DataCardProps) {
-  const first = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const last = Math.min(page * PAGE_SIZE, total);
+  const shownPage = Math.min(page, pageCount);
+  const first = total === 0 ? 0 : (shownPage - 1) * PAGE_SIZE + 1;
+  const last = Math.min(shownPage * PAGE_SIZE, total);
   const range = total === 0 ? "No rows" : `${first}–${last} of ${total}`;
 
   let emptyMessage: ReactNode = null;
   if (error) emptyMessage = `Could not load the table: ${error}`;
-  else if (initialLoading) emptyMessage = "Loading rows…";
+  // Rows can be briefly missing while a page past the end is being clamped.
+  else if (initialLoading || (rows.length === 0 && total > 0))
+    emptyMessage = "Loading rows…";
   else if (rows.length === 0)
     emptyMessage =
       "The table is empty. Reset demo data to restore the seed rows.";
@@ -116,8 +119,6 @@ type RowsProps = {
   emptyMessage: ReactNode;
 };
 
-const HEADERS = ["id", "name", "email", "country", "plan"] as const;
-
 function DataTable({ rows, selectedId, onSelect, emptyMessage }: RowsProps) {
   function handleKeyDown(
     event: KeyboardEvent<HTMLTableRowElement>,
@@ -144,7 +145,7 @@ function DataTable({ rows, selectedId, onSelect, emptyMessage }: RowsProps) {
         </caption>
         <thead>
           <tr>
-            {HEADERS.map((header) => (
+            {["id", ...COLUMNS].map((header) => (
               <th
                 key={header}
                 scope="col"
@@ -159,7 +160,7 @@ function DataTable({ rows, selectedId, onSelect, emptyMessage }: RowsProps) {
           {emptyMessage ? (
             <tr>
               <td
-                colSpan={HEADERS.length}
+                colSpan={COLUMNS.length + 1}
                 className="border-b border-divider px-3.5 py-6 text-center text-muted-foreground"
               >
                 {emptyMessage}
@@ -183,17 +184,15 @@ function DataTable({ rows, selectedId, onSelect, emptyMessage }: RowsProps) {
                   <td className="border-b border-divider px-3.5 py-[11px] font-mono whitespace-nowrap">
                     {customer.id}
                   </td>
-                  {(["name", "email", "country", "plan"] as const).map(
-                    (column) => (
-                      <td
-                        key={column}
-                        className="max-w-[16rem] truncate border-b border-divider px-3.5 py-[11px] whitespace-nowrap"
-                        title={customer[column]}
-                      >
-                        {customer[column]}
-                      </td>
-                    ),
-                  )}
+                  {COLUMNS.map((column) => (
+                    <td
+                      key={column}
+                      className="max-w-[16rem] truncate border-b border-divider px-3.5 py-[11px] whitespace-nowrap"
+                      title={customer[column]}
+                    >
+                      {customer[column]}
+                    </td>
+                  ))}
                 </tr>
               );
             })

@@ -19,6 +19,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useScrollFade } from "@/hooks/use-scroll-fade";
 import { cn } from "@/lib/utils";
 
 import { joinList, plural, quotedPlaceholders } from "../statement-copy";
@@ -209,6 +210,7 @@ function ConfirmBody({
   statement: StatementPreview;
   compact: boolean;
 }) {
+  const codeRef = useScrollFade<HTMLDivElement>();
   return (
     <>
       <div className="overflow-hidden rounded-xl bg-code md:rounded-lg">
@@ -221,7 +223,10 @@ function ConfirmBody({
             className="h-11 px-3 text-[13px] md:h-8 md:px-2.5 md:text-xs"
           />
         </div>
-        <div className="max-h-[200px] overflow-auto py-2.5 md:py-3">
+        <div
+          ref={codeRef}
+          className="max-h-[200px] overflow-auto py-2.5 data-more:[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)] md:py-3"
+        >
           <CodeLines lines={statement.lines} gutter="dialog" />
         </div>
       </div>
@@ -261,7 +266,7 @@ function BoundParamsTable({
           <col />
         </colgroup>
         <thead className={cn(compact ? "sr-only" : "bg-surface-subtle")}>
-          <tr className="text-left text-xs text-muted-foreground">
+          <tr className="border-t border-divider text-left text-xs text-muted-foreground">
             <th scope="col" className={cn("font-normal", cell)}>
               param
             </th>
@@ -341,7 +346,7 @@ function ConfirmNote({ statement }: { statement: StatementPreview }) {
         Input in <span className="font-mono">{joinList(escaped)}</span> escapes
         its string literal and becomes SQL.{" "}
         {count > 1
-          ? `All ${count} statements will run.`
+          ? `The database will receive ${count} statements in one request.`
           : "The database receives 1 statement with that text as part of its code."}
       </p>
     </div>
