@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Injection Lab — Mobile confirm</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D5BC4}a:hover{color:#123F8C}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+.ln{display:flex;font-size:13px;line-height:22px;white-space:pre}
+.ln .n{width:32px;flex:none;text-align:right;padding-right:12px;color:#5E626B}
+.kw{color:#8FB4FF}.pl{color:#E6E6E3}.pm{color:#9FE0C9;font-weight:500}
+.prow{display:grid;grid-template-columns:40px 72px minmax(0,1fr);gap:10px;padding:10px 12px;font-size:13px;border-top:1px solid #EDEBE6;align-items:center}
+.chipm{height:26px;padding:0 10px;border-radius:6px;font-size:12px;display:inline-flex;align-items:center;gap:6px}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #17181C; background: #F4F3EF">
+  <div aria-hidden="true" style="padding: 16px; display: flex; flex-direction: column; gap: 16px">
+    <div style="height: 48px; border-radius: 12px; background: #E9E7E1"></div>
+    <div style="height: 300px; border-radius: 14px; background: #FFFFFF; border: 1px solid #E2E0D9"></div>
+    <div style="height: 220px; border-radius: 14px; background: #14161B"></div>
+  </div>
+  <div style="position: absolute; inset: 0; background: rgba(23,24,28,.48)"></div>
+
+  <div role="dialog" aria-labelledby="mc-title" style="position: absolute; left: 0; right: 0; bottom: 0; background: #FFFFFF; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; max-height: 760px">
+    <div style="display: flex; justify-content: center; padding: 10px 0 4px">
+      <span aria-hidden="true" style="width: 40px; height: 4px; border-radius: 2px; background: #D6D3CB"></span>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 8px 0 16px">
+      <h2 id="mc-title" style="margin: 0; font-size: 18px; font-weight: 600">Run this insert?</h2>
+      <a href="MobileMain.dc.html" aria-label="Close" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #5C5F66">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+      </a>
+    </div>
+
+    <div style="padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto">
+      <div style="display: flex; flex-wrap: wrap; gap: 6px">
+        <span class="mono chipm" style="background: #F1F0EC; color: #3A3D44">Postgres</span>
+        <span class="mono chipm" style="background: #F1F0EC; color: #3A3D44">1 statement</span>
+        <span class="mono chipm" style="background: #EAF0FB; color: #123F8C">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"></path></svg>
+          Parameterized
+        </span>
+      </div>
+
+      <div style="background: #14161B; border-radius: 12px; overflow: hidden">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 4px 12px; border-bottom: 1px solid #2A2D35">
+          <span style="font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: #A3A6AD">Statement</span>
+          <button type="button" style="height: 44px; padding: 0 12px; border: 0; background: transparent; color: #D5D7DC; font: 500 13px 'IBM Plex Sans', system-ui, sans-serif; display: inline-flex; align-items: center; gap: 6px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>
+            Copy
+          </button>
+        </div>
+        <div class="mono" style="padding: 10px 0; overflow-x: auto">
+          <div class="ln"><span class="n">1</span><span><span class="kw">INSERT INTO</span><span class="pl"> customers</span></span></div>
+          <div class="ln"><span class="n">2</span><span class="pl">  (name, email, country, plan)</span></div>
+          <div class="ln"><span class="n">3</span><span><span class="kw">VALUES</span><span class="pl"> (</span><span class="pm">$1</span><span class="pl">, </span><span class="pm">$2</span><span class="pl">, </span><span class="pm">$3</span><span class="pl">, </span><span class="pm">$4</span><span class="pl">);</span></span></div>
+        </div>
+      </div>
+
+      <div style="border: 1px solid #E2E0D9; border-radius: 12px; overflow: hidden">
+        <div style="padding: 10px 12px; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: #5C5F66; background: #FAFAF8">Bound parameters</div>
+        <div class="prow mono"><span style="color: #1D6B55; font-weight: 500">$1</span><span style="color: #5C5F66">name</span><span>Bernardo O'Higgins</span></div>
+        <div class="prow mono"><span style="color: #1D6B55; font-weight: 500">$2</span><span style="color: #5C5F66">email</span><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">bohiggins@example.cl</span></div>
+        <div class="prow mono"><span style="color: #1D6B55; font-weight: 500">$3</span><span style="color: #5C5F66">country</span><span>CL</span></div>
+        <div class="prow mono"><span style="color: #1D6B55; font-weight: 500">$4</span><span style="color: #5C5F66">plan</span><span>pro</span></div>
+      </div>
+
+      <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #5C5F66">The apostrophe in <span class="mono" style="color: #17181C">$1</span> is stored as data. It never becomes part of the SQL.</p>
+    </div>
+
+    <div style="display: flex; gap: 10px; padding: 12px 16px 24px; border-top: 1px solid #EDEBE6">
+      <a href="MobileMain.dc.html" style="flex: 1 1 0; height: 48px; border: 1px solid #D6D3CB; border-radius: 10px; background: #FFFFFF; font: 500 15px 'IBM Plex Sans', system-ui, sans-serif; color: #17181C; text-decoration: none; display: flex; align-items: center; justify-content: center">Cancel</a>
+      <button type="button" style="flex: 2 1 0; height: 48px; border: 0; border-radius: 10px; background: #17181C; font: 500 15px 'IBM Plex Sans', system-ui, sans-serif; color: #FFFFFF">Run insert</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
