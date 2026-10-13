@@ -10,7 +10,7 @@ You fill in a form to insert a customer row. As you type, the app shows the **ex
 Nothing is simulated. The unsafe mode really concatenates strings and really runs what comes out, against a sandboxed demo table.
 
 > [!WARNING]
-> This project contains **intentionally vulnerable code** (`apps/api/app/modules/sql_injection/unsafe.py`) for teaching purposes. Run it locally against the demo databases only, and never copy that pattern into real code.
+> This project contains **intentionally vulnerable code** (`apps/api/app/modules/sql_injection/statements/unsafe_concatenation.py`) for teaching purposes. Run it locally against the demo databases only, and never copy that pattern into real code.
 
 ## What it looks like
 
@@ -58,15 +58,28 @@ flowchart LR
 apps/
   api/                      FastAPI, Python 3.12, uv
     app/modules/sql_injection/
-      statements.py         builds the statement used by both /preview and /insert
-      unsafe.py             the intentionally vulnerable concatenation
-      highlight.py          dialect-aware lexer: highlighting, escape detection, statement count
-      backends/             postgres.py and bigquery.py: list, reset, execute
-      router.py, schemas.py, seed.py
-    tests/
+      routes.py             HTTP endpoints; dependencies.py resolves the requested database
+      schemas/              request/response models: customers, databases, statements
+      statements/
+        builder.py          builds the statement used by both /preview and /insert
+        unsafe_concatenation.py   the intentionally vulnerable concatenation
+      sql_analysis/         reads the SQL for the preview
+        dialects.py         Postgres and BigQuery quoting and comment rules
+        lexer.py            splits SQL into tokens
+        escapes.py          finds where user input escapes its string literal
+        analysis.py         highlighted lines, statement count, escaped fields
+      databases/            postgres.py and bigquery/: list, reset, execute
+      seed_data.py          the 12 demo rows
+    tests/sql_injection/    mirrors the module: builder, analysis, routes, each database
   web/                      Next.js (App Router), Tailwind, shadcn/ui
     app/sql-injection/      the lab's route
-    features/sql-injection/ components, hooks, API client, quick-fill values
+    features/sql-injection/
+      sql-injection-lab.tsx the page composition
+      components/           header, data, insert-form, query-preview, confirm-insert, shared
+      hooks/                databases, table page, live preview, insert flow, reset, messages
+      api/                  fetch client and typed endpoints
+      model/                API types and quick-fill presets
+      copy/                 user-facing wording
 infra/
   postgres/init/            schema and least-privilege app role
   gcp/setup.sh              reproducible BigQuery setup
@@ -87,7 +100,7 @@ Each lab is a feature folder on both sides (`app/modules/<lab>` in the API, `fea
 
 ### The preview never lies
 
-`/preview` and `/insert` both call `build_statement()`, and the backends execute exactly `statement.sql` with `statement.params`. Tests check that the text sent to the driver is identical to the preview.
+`/preview` and `/insert` both call `build_statement()`, and each database executes exactly `statement.sql` with `statement.params`. Tests check that the text sent to the driver is identical to the preview.
 
 To highlight the preview, the API tags every character of the concatenated SQL with the form field it came from, then lexes the result with the database's own quoting rules (`''` in Postgres, backslash escapes in BigQuery). Input that ends up outside its string literal is marked as *escaped*, and the statement count comes from the same lexer.
 
