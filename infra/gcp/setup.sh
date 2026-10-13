@@ -90,4 +90,8 @@ They go to a separate gcloud config dir, so your default ADC is left alone:
 
 Then set GCP_PROJECT_ID and BQ_DATASET in .env and enable the BigQuery compose
 override (see README).
+
+Optional hardening: injected SQL runs with this service account's job permission.
+maximum_bytes_billed caps each query; to cap total spend too, set a custom
+"Query usage per day" quota for the BigQuery API in the Cloud console.
 EOF

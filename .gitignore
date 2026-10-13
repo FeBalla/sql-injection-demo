@@ -8,8 +8,10 @@
 # Service account keys and ADC files
 *credentials*.json
 *service-account*.json
-*-sa-key*.json
-*.keyfile.json
+*key*.json
+*-sa*.json
+sa.json
+gcp-*.json
 application_default_credentials.json
 # gcloud config directories
 .config/
