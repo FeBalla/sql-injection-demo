@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { listCustomers, PAGE_SIZE } from "../api";
-import type { Customer, Db } from "../types";
+import {
+  listCustomers,
+  PAGE_SIZE,
+} from "@/features/sql-injection/api/endpoints";
+import type { Customer, Db } from "@/features/sql-injection/model/types";
 
 type Loaded = {
   /** Which request this data answers; compared to detect loading. */
@@ -15,8 +18,16 @@ function requestKey(db: Db, page: number, version: number) {
   return `${db}:${page}:${version}`;
 }
 
-/** One page of the demo table. `refresh` reloads it (after an insert or reset). */
-export function useCustomers(db: Db, page: number) {
+function pageCountFor(totalRows: number) {
+  return Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+}
+
+/**
+ * The demo table, one page at a time. `refresh` reloads the current page
+ * (after an insert or reset).
+ */
+export function useCustomers(db: Db) {
+  const [page, setPage] = useState(1);
   const [version, setVersion] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const key = requestKey(db, page, version);
@@ -47,15 +58,27 @@ export function useCustomers(db: Db, page: number) {
 
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
   const total = loaded?.total ?? 0;
+  const error = loaded?.error ?? null;
+  const loading = loaded?.key !== key;
+  const pageCount = pageCountFor(total);
+
+  // The table can shrink under us (another tab, an injected DELETE): stay on a
+  // page that exists instead of showing an empty one past the end.
+  if (!loading && !error && page > pageCount) {
+    setPage(pageCount);
+  }
 
   return {
     rows: loaded?.rows ?? [],
     total,
-    error: loaded?.error ?? null,
-    loading: loaded?.key !== key,
+    error,
     /** True until the first response arrives. */
     initialLoading: loaded === null,
-    pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+    page,
+    pageCount,
+    setPage,
+    /** Jump to the last page of a table with `totalRows` rows. */
+    showLastPage: (totalRows: number) => setPage(pageCountFor(totalRows)),
     refresh,
   };
 }

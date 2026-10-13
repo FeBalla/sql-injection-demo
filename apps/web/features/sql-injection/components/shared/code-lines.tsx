@@ -1,6 +1,8 @@
+import type {
+  Segment,
+  SegmentKind,
+} from "@/features/sql-injection/model/types";
 import { cn } from "@/lib/utils";
-
-import type { Segment, SegmentKind } from "../types";
 
 const SEGMENT_CLASS: Record<SegmentKind, string> = {
   keyword: "text-code-keyword",

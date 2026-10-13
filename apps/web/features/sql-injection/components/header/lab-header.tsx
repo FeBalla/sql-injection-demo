@@ -1,10 +1,10 @@
-import { Database, RotateCcw } from "lucide-react";
+import { Database } from "lucide-react";
 
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import type { DatabaseInfo, Db } from "@/features/sql-injection/model/types";
 
-import type { DatabaseInfo, Db } from "../types";
-import { DatabaseSelect } from "./database-picker";
+import { DatabaseSelect } from "./database-select";
+import { ResetButton, ResetIconButton } from "./reset-button";
 
 type LabHeaderProps = {
   databases: DatabaseInfo[];
@@ -15,6 +15,7 @@ type LabHeaderProps = {
   resetting: boolean;
 };
 
+/** Title bar. Wide screens also get the database picker and a labeled reset. */
 export function LabHeader({
   databases,
   db,
@@ -51,44 +52,10 @@ export function LabHeader({
           onChange={onDbChange}
           disabled={dbDisabled}
         />
-        <button
-          type="button"
-          onClick={onReset}
-          disabled={resetting}
-          className="inline-flex h-10 items-center gap-1.5 rounded-md border border-input bg-card px-3 text-[13px] font-medium transition-colors hover:border-input-hover focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
-        >
-          <ResetIcon spinning={resetting} className="size-4" />
-          Reset demo data
-        </button>
+        <ResetButton onReset={onReset} resetting={resetting} />
       </div>
 
-      <button
-        type="button"
-        onClick={onReset}
-        disabled={resetting}
-        aria-label="Reset demo data"
-        className="flex size-11 items-center justify-center rounded-lg border border-input bg-card focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60 md:hidden"
-      >
-        <ResetIcon spinning={resetting} className="size-[18px]" />
-      </button>
+      <ResetIconButton onReset={onReset} resetting={resetting} />
     </header>
-  );
-}
-
-function ResetIcon({
-  spinning,
-  className,
-}: {
-  spinning: boolean;
-  className?: string;
-}) {
-  return (
-    <RotateCcw
-      aria-hidden="true"
-      className={cn(
-        className,
-        spinning && "animate-spin [animation-direction:reverse]",
-      )}
-    />
   );
 }

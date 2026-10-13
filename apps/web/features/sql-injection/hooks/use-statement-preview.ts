@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
-import { previewStatement } from "../api";
-import type { Db, StatementPreview, StatementRequest } from "../types";
+import { previewStatement } from "@/features/sql-injection/api/endpoints";
+import type {
+  Db,
+  StatementPreview,
+  StatementRequest,
+} from "@/features/sql-injection/model/types";
 
 const DEBOUNCE_MS = 150;
 

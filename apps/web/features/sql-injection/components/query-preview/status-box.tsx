@@ -1,9 +1,8 @@
 import { ShieldCheck, TriangleAlert } from "lucide-react";
 
+import { statusCopy } from "@/features/sql-injection/copy/status-copy";
+import type { StatementPreview } from "@/features/sql-injection/model/types";
 import { cn } from "@/lib/utils";
-
-import { statusCopy } from "../statement-copy";
-import type { StatementPreview } from "../types";
 
 /** Explains, under the preview, what the current statement means. */
 export function StatusBox({ preview }: { preview: StatementPreview }) {

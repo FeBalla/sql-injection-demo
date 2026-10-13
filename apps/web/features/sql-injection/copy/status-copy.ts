@@ -1,14 +1,9 @@
-import type { StatementPreview } from "./types";
+// Wording that explains the current statement: the status box under the
+// preview and the confirmation note.
 
-/** "a", "a and b", "a, b and c". */
-export function joinList(items: readonly string[]): string {
-  if (items.length <= 1) return items.join("");
-  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
-}
+import type { StatementPreview } from "@/features/sql-injection/model/types";
 
-export function plural(count: number, singular: string, pluralForm?: string) {
-  return `${count} ${count === 1 ? singular : (pluralForm ?? `${singular}s`)}`;
-}
+import { joinList } from "./format";
 
 /** "$1–$4" for numbered placeholders, "@name, @email, @country and @plan" otherwise. */
 function placeholderList(preview: StatementPreview): string {

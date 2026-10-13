@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { listDatabases } from "../api";
-import type { DatabaseInfo } from "../types";
+import { listDatabases } from "@/features/sql-injection/api/endpoints";
+import type { DatabaseInfo } from "@/features/sql-injection/model/types";
 
 /** Shown until GET /databases answers, so the pickers render immediately. */
 const FALLBACK: DatabaseInfo[] = [

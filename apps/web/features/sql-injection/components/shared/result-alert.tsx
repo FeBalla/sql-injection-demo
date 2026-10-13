@@ -6,15 +6,8 @@ import {
   X,
 } from "lucide-react";
 
+import type { ResultMessage } from "@/features/sql-injection/copy/result-messages";
 import { cn } from "@/lib/utils";
-
-export type ResultMessage = {
-  tone: "success" | "info" | "warning" | "error";
-  title: string;
-  body?: string;
-  /** Raw database error, shown in mono. */
-  detail?: string;
-};
 
 const TONE = {
   success: {
@@ -35,6 +28,7 @@ const TONE = {
   },
 } as const;
 
+/** Outcome of the last review, insert or reset, with a dismiss button. */
 export function ResultAlert({
   message,
   onDismiss,
