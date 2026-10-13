@@ -1,0 +1,42 @@
+[project]
+name = "injection-lab-api"
+version = "0.1.0"
+description = "Injection Lab API: SQL injection demo against Postgres and BigQuery."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.4",
+    "google-cloud-bigquery>=3.25",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.6",
+    "httpx>=0.27",
+]
+
+[tool.uv]
+# This is an application, not a library: install dependencies only.
+package = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency/parameter declarations are evaluated once on purpose.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+markers = [
+    "bigquery: integration tests against BigQuery (skipped without GCP_PROJECT_ID and credentials)",
+]
