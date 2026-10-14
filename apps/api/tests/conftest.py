@@ -6,9 +6,9 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import Settings
+from app.core.config import Settings
 from app.main import create_app
-from app.modules.sql_injection.databases.postgres import PostgresDatabase
+from app.sql_injection.repositories.customer_repository import PostgresCustomerRepository
 
 
 @pytest.fixture(scope="session")
@@ -21,13 +21,15 @@ def postgres_settings() -> Settings:
 
 
 @pytest.fixture
-def postgres(postgres_settings: Settings) -> PostgresDatabase:
-    database = PostgresDatabase(postgres_settings)
-    database.reset()
-    return database
+def postgres(postgres_settings: Settings) -> PostgresCustomerRepository:
+    repository = PostgresCustomerRepository(postgres_settings)
+    repository.reset()
+    return repository
 
 
 @pytest.fixture
-def client(postgres_settings: Settings, postgres: PostgresDatabase) -> Iterator[TestClient]:
+def client(
+    postgres_settings: Settings, postgres: PostgresCustomerRepository
+) -> Iterator[TestClient]:
     with TestClient(create_app(postgres_settings)) as test_client:
         yield test_client

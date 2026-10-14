@@ -1,12 +1,17 @@
-"""Demo inputs from the shared contract, and helpers to build and inspect their statements."""
+"""Demo inputs from the shared contract, and helpers to build and inspect their previews."""
 
-from app.modules.sql_injection.schemas import CustomerIn, Db, StatementPreview
-from app.modules.sql_injection.statements.builder import build_statement
+from app.sql_injection.models import CustomerIn, Db
+from app.sql_injection.preview.builder import bigquery_preview, postgres_preview
+from app.sql_injection.preview.statement import StatementPreview
 
 APOSTROPHE = CustomerIn(
     name="Bernardo O'Higgins", email="bohiggins@example.cl", country="CL", plan="pro"
 )
 PLAIN_ROW = CustomerIn(name="Ana Pérez", email="aperez@example.cl", country="CL", plan="free")
+PLACEHOLDER_LOOKALIKES = CustomerIn(
+    name="100% :name %(x)s %s ::text", email="a:b@c", country="$1 ?", plan="pro"
+)
+"""Harmless input that looks like driver/SQLAlchemy placeholders: must stay plain SQL text."""
 
 
 def malicious(table: str) -> CustomerIn:
@@ -19,12 +24,14 @@ def malicious(table: str) -> CustomerIn:
     )
 
 
-STATEMENT_TABLES: dict[Db, str] = {"postgres": "customers", "bigquery": "injection_lab.customers"}
-"""The demo tables as the INSERT template writes them."""
+BIGQUERY_TABLE = "injection_lab.customers"
+"""The BigQuery demo table as the INSERT writes it (Postgres's is fixed: ``customers``)."""
 
 
 def build(db: Db, row: CustomerIn, parameterized: bool) -> StatementPreview:
-    return build_statement(db, row, parameterized, STATEMENT_TABLES[db])
+    if db == "postgres":
+        return postgres_preview(row, parameterized)
+    return bigquery_preview(row, parameterized, table=BIGQUERY_TABLE)
 
 
 def segments(statement: StatementPreview, line: int) -> list[tuple[str, str]]:
