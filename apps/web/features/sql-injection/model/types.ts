@@ -1,4 +1,4 @@
-// Types mirroring the SQL injection API (apps/api/app/modules/sql_injection/schemas.py).
+// Types mirroring the SQL injection API (apps/api/app/sql_injection/api/schemas.py and preview/statement.py).
 
 export type Db = "postgres" | "bigquery";
 

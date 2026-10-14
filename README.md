@@ -10,7 +10,7 @@ You fill in a form to insert a customer row. As you type, the app shows the **ex
 Nothing is simulated. The unsafe mode really concatenates strings and really runs what comes out, against a sandboxed demo table.
 
 > [!WARNING]
-> This project contains **intentionally vulnerable code** (`apps/api/app/modules/sql_injection/statements/unsafe_concatenation.py`) for teaching purposes. Run it locally against the demo databases only, and never copy that pattern into real code.
+> This project contains **intentionally vulnerable code** (the concatenated functions in `apps/api/app/sql_injection/queries/`) for teaching purposes. Run it locally against the demo databases only, and never copy that pattern into real code.
 
 ## What it looks like
 
@@ -50,27 +50,25 @@ No `.env` is needed for Postgres. Copy `.env.example` to `.env` to change local 
 flowchart LR
   B[Browser] -->|/sql-injection| W["web<br/>Next.js"]
   W -->|"rewrite /api/*"| A["api<br/>FastAPI"]
-  A -->|"psycopg 3<br/>lab_app role"| P[("postgres<br/>public.customers")]
+  A -->|"SQLAlchemy + psycopg 3<br/>lab_app role"| P[("postgres<br/>public.customers")]
   A -.->|"google-cloud-bigquery<br/>impersonated service account<br/>(optional)"| Q[("BigQuery<br/>injection_lab.customers")]
 ```
 
 ```
 apps/
   api/                      FastAPI, Python 3.12, uv
-    app/modules/sql_injection/
-      routes.py             HTTP endpoints; dependencies.py resolves the requested database
-      schemas/              request/response models: customers, databases, statements
-      statements/
-        builder.py          builds the statement used by both /preview and /insert
-        unsafe_concatenation.py   the intentionally vulnerable concatenation
-      sql_analysis/         reads the SQL for the preview
-        dialects.py         Postgres and BigQuery quoting and comment rules
-        lexer.py            splits SQL into tokens
-        escapes.py          finds where user input escapes its string literal
-        analysis.py         highlighted lines, statement count, escaped fields
-      databases/            postgres.py and bigquery/: list, reset, execute
+    app/core/               settings, Postgres engine, BigQuery client and job plumbing
+    app/sql_injection/
+      api/                  HTTP layer: router, request/response schemas, dependencies
+      services/             use cases (list, reset, preview, insert); no HTTP, no SQL
+      queries/              ★ the INSERT this demo is about, concatenated vs parameterized
+        postgres.py         SQLAlchemy: exec_driver_sql(f-string-like SQL) vs text() + bound params
+        bigquery.py         the same two versions with the BigQuery client
+      repositories/         all other SQL (list, count, reset) and running the INSERT safely
+      preview/              highlighting, escape detection and statement count for the preview
+      models.py             customer models and the SQLAlchemy table
       seed_data.py          the 12 demo rows
-    tests/sql_injection/    mirrors the module: builder, analysis, routes, each database
+    tests/                  mirrors app/
   web/                      Next.js (App Router), Tailwind, shadcn/ui
     app/sql-injection/      the lab's route
     features/sql-injection/
@@ -86,7 +84,7 @@ infra/
 design/                     approved design files and screenshots
 ```
 
-Each lab is a feature folder on both sides (`app/modules/<lab>` in the API, `features/<lab>` and `app/<lab>` in the web app), so the next lab can sit next to this one without touching it.
+Each lab is a feature folder on both sides (`app/<lab>` in the API, `features/<lab>` and `app/<lab>` in the web app), so the next lab can sit next to this one without touching it.
 
 ### API
 
@@ -100,11 +98,11 @@ Each lab is a feature folder on both sides (`app/modules/<lab>` in the API, `fea
 
 ### The preview never lies
 
-`/preview` and `/insert` both call `build_statement()`, and each database executes exactly `statement.sql` with `statement.params`. Tests check that the text sent to the driver is identical to the preview.
+The preview is built from the same templates and functions in `queries/` that run the INSERT. Tests execute real inserts and compare the preview with what Postgres (via psycopg) and the BigQuery job actually received.
 
 To highlight the preview, the API tags every character of the concatenated SQL with the form field it came from, then lexes the result with the database's own quoting rules (`''` in Postgres, backslash escapes in BigQuery). Input that ends up outside its string literal is marked as *escaped*, and the statement count comes from the same lexer.
 
-On Postgres, concatenated SQL is sent without parameters, so psycopg uses the simple query protocol and stacked statements really execute. Parameterized SQL uses server-side binding (`RawCursor` with `$n` placeholders). On BigQuery, parameters are `ScalarQueryParameter`s.
+On Postgres, concatenated SQL goes through `exec_driver_sql` on a connection with SQLAlchemy's `no_parameters` option, so psycopg uses the simple query protocol and stacked statements really execute. Parameterized SQL is a `text()` statement with `:name` binds; psycopg binds them server-side, so Postgres receives `$1…$4` and the values separately. On BigQuery, parameters are `ScalarQueryParameter`s.
 
 ### Blast radius
 
