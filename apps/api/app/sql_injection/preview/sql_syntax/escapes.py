@@ -14,7 +14,13 @@ from .lexer import QuotedScan, scan_quoted
 
 
 def escaped_span(sql: str, start: int, end: int, dialect: Dialect) -> tuple[int, int] | None:
-    """Return the part of the value ``sql[start:end]`` that is outside its string literal."""
+    """The ``(start, end)`` part of the value ``sql[start:end]`` that is outside its string
+    literal, or None if the whole value stayed inside it.
+
+    ``sql[start - 1]`` must be the quote the template opened the literal with. For example, in
+    ``'Bernardo O'Higgins'`` the value is ``Bernardo O'Higgins`` and the escaped part is
+    ``'Higgins``: the user's quote closed the literal early.
+    """
     literal = scan_quoted(sql, start - 1, dialect)
     if literal.open_end > start:
         # The opening delimiter grew into the value (``'''``): those quotes are syntax.

@@ -8,9 +8,9 @@ from fastapi import Depends, HTTPException, Request
 from app.core.config import Settings
 
 from ..models import Db
-from ..preview.builder import bigquery_preview, postgres_preview
-from ..repositories.bigquery_customer_repository import BigQueryCustomerRepository
-from ..repositories.customer_repository import PostgresCustomerRepository
+from ..preview import bigquery_preview, postgres_preview
+from ..repositories.bigquery import BigQueryCustomerRepository
+from ..repositories.postgres import PostgresCustomerRepository
 from ..services.customer_service import CustomerService
 
 

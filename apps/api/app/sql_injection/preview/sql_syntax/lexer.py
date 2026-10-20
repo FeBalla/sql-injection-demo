@@ -2,9 +2,12 @@
 
 Only the token boundaries matter (where strings, identifiers and comments start and end), so
 the lexer never fails: anything unterminated simply runs to the end of the text.
+
+Public functions: :func:`tokenize`, :func:`count_statements` and :func:`scan_quoted`. The
+private helpers below them each recognize one kind of token.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -13,10 +16,14 @@ from .dialects import Dialect
 TokenKind = Literal[
     "space", "comment", "string", "identifier", "word", "param", "semicolon", "other"
 ]
+"""What a token is. ``word`` covers keywords and unquoted names alike; ``identifier`` is a
+quoted name (``"a b"``, ```a.b```); ``param`` a query parameter (``$1``, ``@name``)."""
 
 
 @dataclass(frozen=True)
 class Token:
+    """A run of SQL text: ``sql[start:end]`` is a single ``kind`` of token."""
+
     kind: TokenKind
     start: int
     end: int
@@ -45,6 +52,20 @@ def tokenize(sql: str, dialect: Dialect) -> list[Token]:
         tokens.append(Token(kind, start, end))
         start = end
     return tokens
+
+
+def count_statements(tokens: Sequence[Token]) -> int:
+    """How many statements the database will run: non-empty runs of tokens separated by
+    top-level semicolons (a ``;`` inside a string or comment is part of that token)."""
+    count = 0
+    has_content = False
+    for token in tokens:
+        if token.kind == "semicolon":
+            count += has_content
+            has_content = False
+        elif token.kind not in ("space", "comment"):
+            has_content = True
+    return count + has_content
 
 
 def scan_quoted(
@@ -135,6 +156,8 @@ def _prefixed_quote(sql: str, start: int, dialect: Dialect) -> int | None:
 
 
 def _word_end(sql: str, start: int, dialect: Dialect) -> int:
+    """End of the keyword or unquoted name whose second character is at ``sql[start]``."""
+
     def in_word(char: str) -> bool:
         return _is_word_char(char) or (dialect.dollar_in_identifiers and char == "$")
 
@@ -171,6 +194,7 @@ def _starts_parameter(sql: str, start: int, dialect: Dialect) -> bool:
 
 
 def _is_word_char(char: str) -> bool:
+    """Whether ``char`` can continue a word or a parameter name."""
     return char.isalnum() or char == "_"
 
 
@@ -183,5 +207,6 @@ def _skip_while(sql: str, start: int, predicate: Callable[[str], bool]) -> int:
 
 
 def _find_or_end(sql: str, needle: str, start: int) -> int:
+    """Index of the next ``needle`` at or after ``start``, or ``len(sql)`` if there is none."""
     found = sql.find(needle, start)
     return len(sql) if found < 0 else found

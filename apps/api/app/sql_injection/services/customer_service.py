@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ..models import Customer, CustomerIn, Db
-from ..preview.statement import StatementPreview
+from ..preview import StatementPreview
 from ..repositories.protocol import CustomerRepository, Execution
 
 BuildPreview = Callable[[CustomerIn, bool], StatementPreview]

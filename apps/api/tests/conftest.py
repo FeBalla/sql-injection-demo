@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.core.config import Settings
 from app.main import create_app
-from app.sql_injection.repositories.customer_repository import PostgresCustomerRepository
+from app.sql_injection.repositories.postgres import PostgresCustomerRepository
 
 
 @pytest.fixture(scope="session")

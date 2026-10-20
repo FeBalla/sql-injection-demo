@@ -1,14 +1,14 @@
 """FastAPI entry point: mounts each lab's router under /api and seeds the demo tables on startup."""
 
 import logging
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import AsyncGenerator, Iterable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.core.config import Settings
-from app.core.database import DatabaseUnavailableError
+from app.core.errors import DatabaseUnavailableError
 from app.sql_injection.api.dependencies import create_customer_services
 from app.sql_injection.api.router import router as sql_injection_router
 from app.sql_injection.services.customer_service import CustomerService
@@ -22,7 +22,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     services = create_customer_services(settings)
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
         seed_empty_tables(services.values())
         yield
 

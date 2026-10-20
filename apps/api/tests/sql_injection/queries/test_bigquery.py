@@ -9,16 +9,15 @@ from typing import Any
 import pytest
 from google.cloud import bigquery
 
+from app.core.bigquery import MAX_BYTES_BILLED
 from app.core.config import Settings
-from app.core.database import MAX_BYTES_BILLED
 from app.sql_injection.models import CustomerIn
-from app.sql_injection.preview.builder import bigquery_preview
-from app.sql_injection.preview.statement import StatementPreview
+from app.sql_injection.preview import StatementPreview, bigquery_preview
 from app.sql_injection.queries.bigquery import (
     insert_customer_concatenated,
     insert_customer_parameterized,
 )
-from app.sql_injection.repositories.bigquery_customer_repository import (
+from app.sql_injection.repositories.bigquery import (
     BigQueryCustomerRepository,
 )
 

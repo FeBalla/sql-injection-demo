@@ -57,7 +57,9 @@ flowchart LR
 ```
 apps/
   api/                      FastAPI, Python 3.12, uv
-    app/core/               settings, Postgres engine, BigQuery client and job plumbing
+    app/core/               settings and one connection module per database
+      postgres.py           SQLAlchemy engine (psycopg 3, a fresh session per request)
+      bigquery.py           client, job limits and error redaction
     app/sql_injection/
       api/                  HTTP layer: router, request/response schemas, dependencies
       services/             use cases (list, reset, preview, insert); no HTTP, no SQL
@@ -65,7 +67,12 @@ apps/
         postgres.py         SQLAlchemy: exec_driver_sql(f-string-like SQL) vs text() + bound params
         bigquery.py         the same two versions with the BigQuery client
       repositories/         all other SQL (list, count, reset) and running the INSERT safely
-      preview/              highlighting, escape detection and statement count for the preview
+        postgres.py         timeouts, row counts and errors around queries/postgres.py
+        bigquery.py         the same around queries/bigquery.py
+      preview/              the statement preview: highlighting, escaped input, statement count
+        builder.py          builds it from the templates in queries/
+        analysis.py         colors each character and flags input that escaped its literal
+        sql_syntax/         the lexer: each database's quoting, comment and parameter rules
       models.py             customer models and the SQLAlchemy table
       seed_data.py          the 12 demo rows
     tests/                  mirrors app/

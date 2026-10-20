@@ -1,1 +1,1 @@
-"""Shared infrastructure: settings and database connections."""
+"""Shared infrastructure: settings, one connection module per database, and their errors."""

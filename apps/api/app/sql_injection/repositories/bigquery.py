@@ -2,7 +2,7 @@
 
 Paging, counting and reset are plain queries on the ``customers`` table. The demo INSERT comes
 from ``queries/bigquery.py``; this module only runs it within the demo's limits. Every job is
-capped by the client's default job config (see ``app.core.database``).
+capped by the client's default job config (see ``app.core.bigquery``).
 """
 
 from functools import cached_property
@@ -12,13 +12,14 @@ from google.cloud import bigquery
 from google.cloud.bigquery.table import RowIterator
 
 from app.core.bigquery import (
+    create_bigquery_client,
     redacted_error_message,
     rows_affected,
     unavailable_on_transport_errors,
     wait_for_result,
 )
 from app.core.config import Settings
-from app.core.database import DatabaseUnavailableError, create_bigquery_client
+from app.core.errors import DatabaseUnavailableError
 
 from ..models import COLUMNS, Customer, CustomerIn
 from ..queries.bigquery import insert_customer_concatenated, insert_customer_parameterized

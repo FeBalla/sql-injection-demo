@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from ..preview.statement import StatementPreview
+from ..preview import StatementPreview
 from .dependencies import AvailableService, CustomerServices
 from .schemas import CustomerPage, DatabaseInfo, InsertResult, ResetResult, StatementRequest
 

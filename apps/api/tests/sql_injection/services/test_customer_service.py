@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 
 from app.sql_injection.models import Customer, CustomerIn
-from app.sql_injection.preview.builder import postgres_preview
+from app.sql_injection.preview import postgres_preview
 from app.sql_injection.repositories.protocol import Execution
 from app.sql_injection.services.customer_service import CustomerService
 

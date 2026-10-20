@@ -10,9 +10,9 @@ from google.auth.exceptions import RefreshError, TransportError
 from google.cloud import bigquery
 
 from app.core.config import Settings
-from app.core.database import DatabaseUnavailableError
+from app.core.errors import DatabaseUnavailableError
 from app.main import create_app
-from app.sql_injection.repositories.bigquery_customer_repository import (
+from app.sql_injection.repositories.bigquery import (
     BigQueryCustomerRepository,
 )
 

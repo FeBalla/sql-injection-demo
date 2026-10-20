@@ -17,7 +17,7 @@ from sqlalchemy.exc import ProgrammingError
 
 from app.sql_injection.models import CustomerIn
 from app.sql_injection.queries.postgres import insert_customer_concatenated
-from app.sql_injection.repositories.customer_repository import PostgresCustomerRepository
+from app.sql_injection.repositories.postgres import PostgresCustomerRepository
 
 from ..samples import APOSTROPHE, PLACEHOLDER_LOOKALIKES, build, malicious
 

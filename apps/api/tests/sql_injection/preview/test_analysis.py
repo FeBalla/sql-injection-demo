@@ -3,10 +3,9 @@
 import pytest
 
 from app.sql_injection.models import CustomerIn, Db
-from app.sql_injection.preview.analysis import analyze, count_statements
-from app.sql_injection.preview.dialects import DIALECTS
-from app.sql_injection.preview.lexer import tokenize
-from app.sql_injection.preview.statement import StatementPreview
+from app.sql_injection.preview import StatementPreview
+from app.sql_injection.preview.analysis import analyze
+from app.sql_injection.preview.sql_syntax import DIALECTS, count_statements, tokenize
 
 from ..samples import APOSTROPHE, PLAIN_ROW, build, malicious, segments
 

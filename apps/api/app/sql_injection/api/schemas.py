@@ -3,7 +3,7 @@
 from pydantic import BaseModel
 
 from ..models import Customer, CustomerIn, Db
-from ..preview.statement import StatementPreview
+from ..preview import StatementPreview
 
 
 class StatementRequest(BaseModel):

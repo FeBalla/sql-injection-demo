@@ -9,7 +9,7 @@ import pytest
 from google.cloud import bigquery
 
 from app.core.config import Settings
-from app.sql_injection.repositories.bigquery_customer_repository import (
+from app.sql_injection.repositories.bigquery import (
     BigQueryCustomerRepository,
 )
 

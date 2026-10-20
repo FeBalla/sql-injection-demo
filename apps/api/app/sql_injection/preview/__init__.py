@@ -1,22 +1,21 @@
-"""The statement preview: the exact SQL of the INSERT, highlighted and analyzed. No DB access.
+"""The statement preview: the exact SQL of the demo INSERT, highlighted and analyzed. No DB access.
 
-The SQL comes from ``queries/`` (see ``builder``). A small, dialect-aware lexer then answers
-three questions about it:
+Entry points: :func:`postgres_preview` and :func:`bigquery_preview` return a
+:class:`StatementPreview` for a customer, concatenated or parameterized.
 
-* how to color each character (``keyword``, ``string``, ``param``, ``plain``, or ``input`` /
-  ``escaped`` for characters that came from user input),
-* how many statements the database will see (top-level ``;`` outside strings and comments),
-* which input values escape the string literal the template put them in.
+How a preview is made:
 
-It is not a full parser: it only knows enough of each dialect's literal, identifier and comment
-syntax to find where strings start and end, which is exactly what SQL injection abuses.
+1. ``builder`` takes the SQL from the same templates and functions in ``queries/`` that run the
+   INSERT, and splits it into *pieces*: template text, and the value of each form field.
+2. ``analysis`` colors every character, counts the statements and flags the fields whose value
+   escaped its string literal.
+3. ``statement`` holds the result returned by the API.
 
-Modules, in reading order:
-
-* ``statement``: the preview model returned by the API,
-* ``builder``: builds it from the templates and builders in ``queries/``,
-* ``dialects``: the per-database syntax rules (quotes, comments, parameters) and keywords,
-* ``lexer``: splits SQL into tokens and scans quoted literals,
-* ``escapes``: finds the part of an input value that ends up outside its string literal,
-* ``analysis``: :func:`analysis.analyze`, the entry point that combines the above.
+The SQL lexing behind step 2 (each database's quoting, comment and parameter rules) lives in
+``sql_syntax``. Reading it is only needed to change how SQL is tokenized.
 """
+
+from .builder import bigquery_preview, postgres_preview
+from .statement import BoundParam, Segment, StatementPreview
+
+__all__ = ["BoundParam", "Segment", "StatementPreview", "bigquery_preview", "postgres_preview"]

@@ -1,5 +1,8 @@
 """Per-database SQL syntax rules the lexer needs, and the keywords highlighted in the preview.
 
+A :class:`Dialect` is plain data: the lexer reads its flags instead of branching on the database
+name, so supporting another database means adding one entry to :data:`DIALECTS`.
+
 The templates only ever emit plain quoted strings, but concatenated user input can produce any
 syntax the database accepts, so the rules cover every way a string or comment can start:
 
@@ -19,11 +22,13 @@ nested), ``@name`` parameters.
 from dataclasses import dataclass
 from typing import Literal
 
-from ..models import Db
+from ...models import Db
 
 
 @dataclass(frozen=True)
 class Dialect:
+    """How one database writes string literals, quoted identifiers, comments and parameters."""
+
     string_quotes: str
     """Characters that open a string literal."""
     identifier_quotes: str
@@ -77,6 +82,7 @@ DIALECTS: dict[Db, Dialect] = {
         parameters="named",
     ),
 }
+"""The syntax rules of each database, as described at the top of this module."""
 
 # fmt: off
 KEYWORDS = frozenset({

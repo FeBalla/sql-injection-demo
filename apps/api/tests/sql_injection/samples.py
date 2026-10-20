@@ -1,8 +1,7 @@
 """Demo inputs from the shared contract, and helpers to build and inspect their previews."""
 
 from app.sql_injection.models import CustomerIn, Db
-from app.sql_injection.preview.builder import bigquery_preview, postgres_preview
-from app.sql_injection.preview.statement import StatementPreview
+from app.sql_injection.preview import StatementPreview, bigquery_preview, postgres_preview
 
 APOSTROPHE = CustomerIn(
     name="Bernardo O'Higgins", email="bohiggins@example.cl", country="CL", plan="pro"

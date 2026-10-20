@@ -1,4 +1,5 @@
-"""Running BigQuery jobs within the demo's limits, and turning their failures into what it shows.
+"""The BigQuery connection: the client, running jobs within the demo's limits, and turning their
+failures into what the demo shows.
 
 Failing to authenticate or to reach the API means the database is unavailable (HTTP 503), as
 opposed to a query error, which is the database's answer to the demo SQL and is shown to the
@@ -6,16 +7,22 @@ user without anything that identifies the GCP project (this is a public demo).
 """
 
 import re
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager, suppress
 
+import google.auth
 import requests
 from google.api_core.exceptions import GoogleAPIError, RetryError
-from google.auth.exceptions import GoogleAuthError
+from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError
 from google.cloud import bigquery
 from google.cloud.bigquery.table import RowIterator
 
-from .database import DatabaseUnavailableError
+from .config import Settings
+from .errors import DatabaseUnavailableError
+
+MAX_BYTES_BILLED = 100 * 1024 * 1024
+"""Injected SQL runs with the project's job permissions, so cap what any single query may scan
+(e.g. a public dataset). The demo table itself is tiny."""
 
 UNAVAILABLE_ERRORS = (GoogleAuthError, requests.exceptions.RequestException, RetryError)
 """Authentication and transport failures. RetryError is what api_core raises once retries of a
@@ -25,8 +32,31 @@ _SERVICE_ACCOUNT = re.compile(r"[\w.+-]+@[\w.-]+\.iam\.gserviceaccount\.com")
 _WAIT_MARGIN_S = 5
 
 
+def create_bigquery_client(settings: Settings) -> bigquery.Client | str:
+    """The client, or the reason BigQuery is unavailable.
+
+    Every query job it starts is capped (time and bytes billed) by its default job config,
+    which ``client.query`` merges into the config of each call.
+    """
+    if not settings.gcp_project_id:
+        return "GCP_PROJECT_ID is not set."
+    try:
+        credentials, _ = google.auth.default()
+    except DefaultCredentialsError:
+        return "No Google Cloud credentials found (Application Default Credentials)."
+    return bigquery.Client(
+        project=settings.gcp_project_id,
+        location=settings.bq_location,
+        credentials=credentials,
+        default_query_job_config=bigquery.QueryJobConfig(
+            maximum_bytes_billed=MAX_BYTES_BILLED,
+            job_timeout_ms=settings.bq_job_timeout_ms,
+        ),
+    )
+
+
 @contextmanager
-def unavailable_on_transport_errors() -> Iterator[None]:
+def unavailable_on_transport_errors() -> Generator[None]:
     """Re-raise :data:`UNAVAILABLE_ERRORS` as :class:`DatabaseUnavailableError`."""
     try:
         yield

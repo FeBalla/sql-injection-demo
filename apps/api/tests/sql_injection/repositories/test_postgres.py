@@ -6,9 +6,9 @@ import psycopg
 import pytest
 
 from app.core.config import Settings
-from app.core.database import DatabaseUnavailableError
+from app.core.errors import DatabaseUnavailableError
 from app.sql_injection.models import CustomerIn
-from app.sql_injection.repositories.customer_repository import PostgresCustomerRepository
+from app.sql_injection.repositories.postgres import PostgresCustomerRepository
 from app.sql_injection.seed_data import SEED_ROWS
 
 from ..samples import APOSTROPHE, PLACEHOLDER_LOOKALIKES, build, malicious

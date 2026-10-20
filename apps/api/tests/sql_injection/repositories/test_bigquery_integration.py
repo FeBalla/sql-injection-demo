@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.sql_injection.repositories.bigquery_customer_repository import (
+from app.sql_injection.repositories.bigquery import (
     BigQueryCustomerRepository,
 )
 

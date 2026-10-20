@@ -5,7 +5,7 @@ comes from ``queries/postgres.py``; this module only runs it within the demo's s
 """
 
 import threading
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from typing import Any
 
@@ -14,7 +14,8 @@ from sqlalchemy import Connection, Engine, event, func, insert, select, text
 from sqlalchemy.exc import DBAPIError, OperationalError
 
 from app.core.config import Settings
-from app.core.database import DatabaseUnavailableError, create_postgres_engine
+from app.core.errors import DatabaseUnavailableError
+from app.core.postgres import create_postgres_engine
 
 from ..models import Customer, CustomerIn, customers
 from ..queries.postgres import insert_customer_concatenated, insert_customer_parameterized
@@ -80,7 +81,7 @@ class PostgresCustomerRepository:
         return f"Cancelled: the statement ran longer than {self._statement_timeout_ms} ms."
 
     @contextmanager
-    def _connect(self) -> Iterator[Connection]:
+    def _connect(self) -> Generator[Connection]:
         if self.engine is None:
             raise DatabaseUnavailableError("Postgres is unavailable: DATABASE_URL is not set.")
         try:
@@ -92,7 +93,7 @@ class PostgresCustomerRepository:
 
 
 @contextmanager
-def _cancel_after(timeout_ms: int, conn: Connection) -> Iterator[threading.Event]:
+def _cancel_after(timeout_ms: int, conn: Connection) -> Generator[threading.Event]:
     """Cancel whatever ``conn`` is running once ``timeout_ms`` pass; the event tells if it did.
 
     statement_timeout is only a session default: the executed SQL can raise or disable it
@@ -117,7 +118,7 @@ def _cancel_after(timeout_ms: int, conn: Connection) -> Iterator[threading.Event
 
 
 @contextmanager
-def _rows_affected(conn: Connection) -> Iterator[list[int]]:
+def _rows_affected(conn: Connection) -> Generator[list[int]]:
     """Collect the row count of every non-query statement that ``conn`` runs meanwhile.
 
     Concatenated input can append statements, but SQLAlchemy only reports the first one's
